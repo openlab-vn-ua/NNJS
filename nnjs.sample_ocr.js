@@ -1,4 +1,4 @@
-// JavaScript Simple Neural Network toolkit
+﻿// JavaScript Simple Neural Network toolkit
 // [OCR demo network]
 
 // Require nnjs.js
@@ -190,7 +190,26 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
     if (addLeftSep) { t += '!'; }
     for (var x = 0; x < SAMPLE_OCR_SX; x++)
     {
-      t += '' + ((L[y*SAMPLE_OCR_SX+x] == 0) ? ' ' : '1');
+      var v = L[y*SAMPLE_OCR_SX+x];
+      var c = '';
+
+      if (v <= 0)
+      {
+        c = ' ';
+      }
+      else if (v >= 1)
+      {
+        c = '\u2588'; // '█'; // '*';
+      }
+      else
+      {
+        // v = Math.floor(v * 10); c = v.toString()[0];
+        v = Math.floor(v * 10);
+        var F = '\u2591\u2591\u2591'+'\u2592\u2592\u2592\u2593'+'\u2593\u2593\u2593'; // '░░░▒▒▒▒▓▓▓'; // '0123456789';
+        c = F[v];
+      }
+
+      t += c;
     }
     if (addRightSep) { t += '!'; }
     T[ty++] += t;
@@ -212,14 +231,14 @@ function sampleOcrNetwork()
   if (LAYERS == 3)
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.Neuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.Neuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
     var OUT = new NN.Layer(SAMPLES.length, NN.Neuron); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
     NET = [IN, L1, OUT];
   }
   else
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.Neuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.Neuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
     var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.Neuron); L2.addNeuron(NN.BiasNeuron); L2.addInputAll(L1);
     var OUT = new NN.Layer(SAMPLES.length, NN.Neuron); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
     NET = [IN, L1, L2, OUT];
@@ -240,7 +259,9 @@ function sampleOcrNetwork()
     {
       if (noiseType == NOISE_TYPE_PIXEL_DARKER_LIGHTER)
       {
-        return(value == 0 ? NN.Internal.getRandom(0.0,0.49) : NN.Internal.getRandom(0.51,1.0));
+        if (value <= 0) { return(NN.Internal.getRandom(0.0 , 0.49)); }
+        if (value >= 1) { return(NN.Internal.getRandom(0.51, 1.0 )); }
+        return(value);
       }
 
       if (noiseType == NOISE_TYPE_PIXEL_RANDOM)
@@ -258,7 +279,7 @@ function sampleOcrNetwork()
     for (var i = 0; i < noiseCount; i++)
     {
       var noiseIndex = NN.Internal.getRandomInt(0,R.length);
-      R[noiseIndex] = 1-R[noiseIndex];
+      R[noiseIndex] = makeNoise(R[noiseIndex]);
     }
 
     return(R);
@@ -381,6 +402,56 @@ function sampleOcrNetwork()
 
   // Verification
 
+  function getMaximumIndex(R, minDiff)
+  {
+    // input:  R as vector of floats (usualy 0.0 .. 1.0)
+    // result: index of maximum value, checking that next maximum is at least eps lower. returns null if no such value found (maximums too close)
+
+    if (R.length <= 0) { return(null); }
+
+    var currMaxIndex = 0;
+    for (var i = 1; i < R.length; i++)
+    {
+      if (R[i] > R[currMaxIndex]) { currMaxIndex = i; }
+    }
+
+    if (R[currMaxIndex] < minDiff)
+    {
+      return(null); // not ever greater than 0, no reason so check another max
+    }
+
+    if (R.length <= 1) { return(currMaxIndex); } // actually, 0
+
+    var nextMaxIndex = (currMaxIndex+1) % R.length; // actually, any other value
+
+    for (var i = 0; i < R.length; i++)
+    {
+      if (i == currMaxIndex)
+      {
+        // skip, this is current max
+      }
+      else if (i == nextMaxIndex)
+      {
+        // skip, this is current next max
+      }
+      else
+      {
+        if (R[i] > R[nextMaxIndex]) { nextMaxIndex = i; }
+      }
+    }
+
+    var nextMaxValue = R[nextMaxIndex];
+
+    if (nextMaxValue < 0) { nextMaxValue = 0; } // bug trap
+
+    if ((R[currMaxIndex] - nextMaxValue) >= minDiff)
+    {
+      return(currMaxIndex);
+    }
+
+    return(null);
+  }
+
   function verifyProc(NET, DATAS, TARGS, stepName, imagesPerSample)
   {
     var CHKRS = [];
@@ -389,19 +460,41 @@ function sampleOcrNetwork()
       CHKRS.push(NN.doProc(NET, DATAS[dataIndex]));
     }
 
-    var veps = 0.4; // epsilon for verification
+    var vdif = 0.15; // max diff for smart verification
+    var veps = 0.4; // epsilon for strict verification
 
     var isOK = true;
     for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
     {
-      if (!NN.isResultMatchSimpleFunc(TARGS[dataIndex], CHKRS[dataIndex], veps))
+      var imageIndex = dataIndex % imagesPerSample;
+      var sampleIndex = (dataIndex-imageIndex) / imagesPerSample;
+
+      var isSimpleMatchOK = NN.isResultMatchSimpleFunc(TARGS[dataIndex], CHKRS[dataIndex], veps);
+      var smartMatchSampleIndex = getMaximumIndex(CHKRS[dataIndex], vdif);
+      var smartMatchExpectIndex = getMaximumIndex(TARGS[dataIndex], vdif);
+
+      //if (!isSimpleMatchOK)
+      if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex))
       {
-        console.log('Verification step '+stepName+'['+dataIndex+']'+':FAILED', [TARGS[dataIndex], CHKRS[dataIndex], veps]);
+        var status = '';
+
+        if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex))
+        {
+          status = 'FAIL';
+        }
+        else if (!isSimpleMatchOK)
+        {
+          status = 'WARN';
+        }
+        else
+        {
+          status = '???';
+        }
+
+        console.log('Verification step '+stepName+'['+dataIndex+']'+':'+status+'', [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [ veps, vdif ]);
         var T = sampleAddLetTexts(DATAS[dataIndex], null, true, true, true, true);
         for (var lineIndex = 0; lineIndex < T.length; lineIndex++)
         {
-          var imageIndex = dataIndex % imagesPerSample;
-          var sampleIndex = (dataIndex-imageIndex) / imagesPerSample;
           console.log(T[lineIndex], lineIndex, sampleIndex, imageIndex);
         }
         isOK = false;
@@ -423,15 +516,23 @@ function sampleOcrNetwork()
     DATASN.push(getNoisedInput(DATAS[dataIndex],1));
   }
 
-  verifyProc(NET, DATASN, TARGS, 'Noised.1', DATASN.length / DATASE.length);
+  verifyProc(NET, DATASN, TARGS, 'Noised.F1', DATASN.length / DATASE.length);
 
   var DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
-    DATASN.push(getNoisedInput(DATAS[dataIndex],2));
+    DATASN.push(getNoisedInput(DATAS[dataIndex],30,NOISE_TYPE_PIXEL_DARKER_LIGHTER));
   }
 
-  verifyProc(NET, DATASN, TARGS, 'Noised.3', DATASN.length / DATASE.length);
+  verifyProc(NET, DATASN, TARGS, 'Noised.DL30', DATASN.length / DATASE.length);
+
+  var DATASN = [];
+  for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
+  {
+    DATASN.push(getNoisedInput(DATAS[dataIndex],10,NOISE_TYPE_PIXEL_RANDOM));
+  }
+
+  verifyProc(NET, DATASN, TARGS, 'Noised.R10', DATASN.length / DATASE.length);
 }
 
 //sampleOcrNetwork();
