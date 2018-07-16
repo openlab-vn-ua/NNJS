@@ -322,7 +322,7 @@ function doProc(NET, inputs)
 function getDeltaOutputSum(outNeuron, OSME) // OSME = output sum margin of error (AKA Expected - Calculated)
 {
   var OS = outNeuron.getSum();
-  DOS = SD(OS) * OSME;
+  var DOS = SD(OS) * OSME; // FIX: DOS is local
   return(DOS);
 }
 
