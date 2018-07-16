@@ -26,6 +26,12 @@ function isFloatListAlmostEqual(a,b,eps)
 
 function doUnitTest1()
 {
+  // Test case based on
+  // http://stevenmiller888.github.io/mind-how-to-build-a-neural-network/
+  // Note: For some reason original test uses division by S' instead of S' multiplication during train calculation 
+  // That is why we use DIV_IN_TRAIN=true here to keep clculation consistent with the original good explaied test (basides the trick with "/")
+  // Mode DIV_IN_TRAIN=true intended to use for this test only, during production work we use is as false
+
   var isOk = true;
 
   var ODT = NN.DIV_IN_TRAIN;
@@ -117,11 +123,6 @@ function doUnitTest1()
     L1.neurons[i].initNewWeights(); // would work this way since only one output neuron (so will be called once for each hidden neuron)
     L1.neurons[i].addNewWeightsDelta(DWSL1[i]);
     NWSL1.push(L1.neurons[i].nw);
-  }
-
-  if (!isFloatListAlmostEqual(DHS, [ -0.08866949824511623, -0.045540261294143396, -0.032156856991522986 ]))
-  {
-    console.log('FAIL: delta hidden sums', DHS); // array of DOS for prev layer
   }
 
   if (!isFloatListAlmostEqual(DWSL1[0], [-0.08866949824511623 , -0.08866949824511623 ]) ||
