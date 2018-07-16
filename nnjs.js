@@ -360,13 +360,15 @@ function getDeltaHiddenSums(theNeuron, DOS)
 
 // Train function
 
-function doTrainStep(NET, DATA, TARG, CALC, SPEED)
+function doTrainStep(NET, DATA, TARG, SPEED)
 {
-  // NET=network, DATA=input, TARG=expeted, CALC=calculated
+  // NET=network, DATA=input, TARG=expeted
+  // CALC=calculated output (will be calculated)
+  // Note: we re-run calculation here both to receive CALC AND update "sum" state of each neuron in NET
 
   if (SPEED == null) { SPEED = 1.0; }
 
-  var CALC = doProc(NET, DATA); // not we need this because sum has to be updated for each neuron
+  var CALC = doProc(NET, DATA); // we need this because sum has to be updated in NET for each neuron for THIS test case
 
   for (var i = 1; i < NET.length; i++) // skip input layer
   {
