@@ -231,16 +231,16 @@ function sampleOcrNetwork()
   if (LAYERS == 3)
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.Neuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
-    var OUT = new NN.Layer(SAMPLES.length, NN.Neuron); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.ProcNeuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
+    var OUT = new NN.Layer(SAMPLES.length, NN.ProcNeuron); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
     NET = [IN, L1, OUT];
   }
   else
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.Neuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
-    var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.Neuron); L2.addNeuron(NN.BiasNeuron); L2.addInputAll(L1);
-    var OUT = new NN.Layer(SAMPLES.length, NN.Neuron); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.ProcNeuron); L1.addNeuron(NN.BiasNeuron); L1.addInputAll(IN);
+    var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.ProcNeuron); L2.addNeuron(NN.BiasNeuron); L2.addInputAll(L1);
+    var OUT = new NN.Layer(SAMPLES.length, NN.ProcNeuron); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
     NET = [IN, L1, L2, OUT];
   }
 

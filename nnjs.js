@@ -84,7 +84,7 @@ function getRandomInitWeight()
   return(getRandom(-1, 1));
 }
 
-function Neuron()
+function ProcNeuron()
 {
   var that = this;
 
@@ -239,7 +239,7 @@ function Layer(N, maker)
   if (N == null) { N = 0; }
   if (N < 0) { N = 0; }
 
-  if (maker == null) { maker = Neuron; }
+  if (maker == null) { maker = ProcNeuron; }
 
   that.neurons = [];
 
@@ -523,7 +523,7 @@ NCore.Internal.getDeltaHiddenSums = getDeltaHiddenSums;
 
 // Exports
 
-NCore.Neuron = Neuron;
+NCore.ProcNeuron = ProcNeuron;
 NCore.InputNeuron = InputNeuron;
 NCore.BiasNeuron = BiasNeuron;
 

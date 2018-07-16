@@ -6,9 +6,9 @@
 function sampleXorNetwork()
 {
   var IN  = new NN.Layer(2, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
-  var L1  = new NN.Layer(2, NN.Neuron); L1.addNeuron(NN.BiasNeuron);
+  var L1  = new NN.Layer(2, NN.ProcNeuron); L1.addNeuron(NN.BiasNeuron);
   L1.addInputAll(IN);
-  var OUT = new NN.Layer(1, NN.Neuron); 
+  var OUT = new NN.Layer(1, NN.ProcNeuron); 
   OUT.addInputAll(L1);
   var NET = [IN, L1, OUT];
 
@@ -23,11 +23,11 @@ function sampleXorNetwork()
 function sampleXorNetwork2()
 {
   var IN  = new NN.Layer(2, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
-  var L1  = new NN.Layer(3, NN.Neuron); L1.addNeuron(NN.BiasNeuron);
+  var L1  = new NN.Layer(3, NN.ProcNeuron); L1.addNeuron(NN.BiasNeuron);
   L1.addInputAll(IN);
-  var L2  = new NN.Layer(3, NN.Neuron); L2.addNeuron(NN.BiasNeuron);
+  var L2  = new NN.Layer(3, NN.ProcNeuron); L2.addNeuron(NN.BiasNeuron);
   L2.addInputAll(L1);
-  var OUT = new NN.Layer(1, NN.Neuron); 
+  var OUT = new NN.Layer(1, NN.ProcNeuron); 
   OUT.addInputAll(L2);
   var NET = [IN, L1, L2, OUT];
 
