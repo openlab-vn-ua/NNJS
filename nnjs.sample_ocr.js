@@ -473,8 +473,9 @@ function sampleOcrNetwork()
       var smartMatchSampleIndex = getMaximumIndex(CHKRS[dataIndex], vdif);
       var smartMatchExpectIndex = getMaximumIndex(TARGS[dataIndex], vdif);
 
-      //if (!isSimpleMatchOK)
-      if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex))
+      //if (true) // all
+      //if (!isSimpleMatchOK) // warn
+      if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex)) // fail
       {
         var status = '';
 
@@ -488,7 +489,7 @@ function sampleOcrNetwork()
         }
         else
         {
-          status = '???';
+          status = 'OK.OK.OK.OK.OK.OK.OK.OK';
         }
 
         console.log('Verification step '+stepName+'['+dataIndex+']'+':'+status+'', [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [ veps, vdif ]);
