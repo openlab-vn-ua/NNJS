@@ -6,7 +6,7 @@
 function sampleXorNetwork()
 {
   var IN  = new NN.Layer(2, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
-  var L1  = new NN.Layer(3, NN.Neuron); L1.addNeuron(NN.BiasNeuron);
+  var L1  = new NN.Layer(2, NN.Neuron); L1.addNeuron(NN.BiasNeuron);
   L1.addInputAll(IN);
   var OUT = new NN.Layer(1, NN.Neuron); 
   OUT.addInputAll(L1);
