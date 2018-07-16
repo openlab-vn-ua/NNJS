@@ -432,32 +432,34 @@ function doTrainStep(NET, DATA, TARG, CALC, SPEED)
   }
 }
 
-function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, REP_N, isTrainDoneFunc)
+function isTrainDoneDefaultFunc(DATAS, TARGS, CALCS, eps)
 {
-  function isTrainDoneDefaultFunc(DATAS, TARGS, CALCS)
+  if (eps == null) { eps = 0.1; } // > 0.0 and < 0.5
+
+  function isResultItemMatch(t,c)
   {
-    function isResultItemMatch(t,c)
-    {
-      if (Math.abs(t-c) < 0.1) { return(true); }
-      return(false);
-    }
-
-    isOK = true;
-
-    for (var s = 0; s < TARGS.length; s++)
-    {
-      for (var ii = 0; ii < TARGS[s].length; ii++)
-      {
-        if (!isResultItemMatch(TARGS[s][ii], CALCS[s][ii]))
-        {
-          isOK = false;
-        }
-      }
-    }
-
-    return(isOK);
+    if (Math.abs(t-c) < eps) { return(true); }
+    return(false);
   }
 
+  isOK = true;
+
+  for (var s = 0; s < TARGS.length; s++)
+  {
+    for (var ii = 0; ii < TARGS[s].length; ii++)
+    {
+      if (!isResultItemMatch(TARGS[s][ii], CALCS[s][ii]))
+      {
+        isOK = false;
+      }
+    }
+  }
+
+  return(isOK);
+}
+
+function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, REP_N, isTrainDoneFunc)
+{
   if (MAX_N == null)       { MAX_N = 50000; }
   if (REP_N == null)       { REP_N =   100; } // report interval
   if (SPEED == null)       { SPEED = 0.125; }
@@ -527,5 +529,10 @@ NCore.Layer   = Layer;
 
 NCore.doProc  = doProc;
 NCore.doTrain = doTrain;
+
+// Aux
+
+NCore.isResultMatchSimpleFunc = function(TARG, CALC, eps) { return(isTrainDoneDefaultFunc(null, [ TARG ], [ CALC ], eps)); }
+NCore.isResultBatchMatchSimpleFunc = function(TARGS, CALCS, eps) { return(isTrainDoneDefaultFunc(null, TARGS, CALCS, eps)); }
 
 }()
