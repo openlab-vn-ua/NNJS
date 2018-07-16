@@ -25,7 +25,7 @@ function getRandom (min, max)
 
 function getRandomInt (min, max)
 {
-  return Math.ceil((PRNG.nextFloat() * (max - min)) + min) % max;
+  return Math.floor((PRNG.nextFloat() * (max - min)) + min) % max;
 }
 
 // Activation functions
