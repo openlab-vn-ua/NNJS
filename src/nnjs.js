@@ -1,7 +1,7 @@
 // JavaScript Simple Neural Network toolkit
 // [CORE]
 // Initally Written by Serge Ageyev
-// Open Source Software under BSD License
+// Open Source Software under MIT License
 
 // Require prng.js
 

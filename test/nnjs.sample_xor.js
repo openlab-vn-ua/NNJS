@@ -1,4 +1,5 @@
 // JavaScript Simple Neural Network toolkit
+// Open Source Software under MIT License
 // [Xor demo network]
 
 // Require nnjs.js

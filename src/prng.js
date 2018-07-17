@@ -3,7 +3,7 @@
 // Inspired by 
 // http://www.firstpr.com.au/dsp/rand31/
 // https://gist.github.com/blixt/f17b47c62508be59987b
-// Open Source Software under BSD License
+// Open Source Software under MIT License
 
 function Random(seed)
 {
