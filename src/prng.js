@@ -38,10 +38,12 @@ function Random(seed)
 
   // Like C Random
 
-  /// Maximum output value for rand() == [0..RAND_MAX]
-  that.RAND_MAX = (that.NEXT_MAX - that.NEXT_MIN);
+  /// Maximum output value for rand() == [0..RAND_MAX_VALUE]
+  that.RAND_MAX_VALUE = (that.NEXT_MAX - that.NEXT_MIN);
 
-  /// Returns next random in range [0..RAND_MAX] (inclusive)
+  that.RAND_MAX = that.RAND_MAX_VALUE; // Synonym
+
+  /// Returns next random in range [0..RAND_MAX_VALUE] (inclusive)
   that.rand = function()
   {
     return that.next() - that.NEXT_MIN;
@@ -57,11 +59,11 @@ function Random(seed)
       max = minOrMax;
       if (max == null)
       {
-        return that.rand() * 1.0 / that.RAND_MAX; 
+        return that.rand() * 1.0 / that.RAND_MAX_VALUE; 
       }
       else
       {
-        return (that.rand() * 1.0 / that.RAND_MAX) * max;
+        return (that.rand() * 1.0 / that.RAND_MAX_VALUE) * max;
       }
     }
     else
@@ -69,7 +71,7 @@ function Random(seed)
       var min = minOrMax;
       if (min == null) { min = 0.0; }
       var diff = max - min;
-      return (that.rand() * 1.0 / that.RAND_MAX) * diff + min;
+      return (that.rand() * 1.0 / that.RAND_MAX_VALUE) * diff + min;
     }
   }
 }

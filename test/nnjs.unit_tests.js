@@ -228,7 +228,7 @@ function doUnitTestRNG5()
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
-  var TMAX = TRNG.RAND_MAX / 64.0;
+  var TMAX = TRNG.RAND_MAX_VALUE / 64.0;
   var cmax = 0;
   for (var i = 0; i < TEST_RNG_MAX_COUNT; i++)
   {
