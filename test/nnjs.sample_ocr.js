@@ -279,7 +279,7 @@ function sampleOcrNetwork()
 
     for (var i = 0; i < noiseCount; i++)
     {
-      var noiseIndex = NN.Internal.getRandomInt(0,R.length);
+      var noiseIndex = NN.Internal.getRandomInt(R.length);
       R[noiseIndex] = makeNoise(R[noiseIndex]);
     }
 

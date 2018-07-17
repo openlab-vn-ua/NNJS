@@ -20,12 +20,15 @@ var PRNG = new Random(new Date().getTime());
 
 function getRandom (min, max)
 {
-  return (PRNG.nextFloat() * (max - min)) + min;
+  return (PRNG.randFloat(min, max));
 }
 
-function getRandomInt (min, max)
+// getRandomInt (from, limit) Return integer in range [from, limit) :: from-inclusive, limit-exclusive
+// getRandomInt (limit)       Return integer in range [0, limit)    :: 0-inclusive, limit-exclusive
+function getRandomInt (from, limit)
 {
-  return Math.floor((PRNG.nextFloat() * (max - min)) + min) % max;
+  if (limit == null) { limit = from; from = 0; }
+  return Math.floor((PRNG.nextFloat() * (limit - from)) + from) % limit;
 }
 
 // Activation functions
