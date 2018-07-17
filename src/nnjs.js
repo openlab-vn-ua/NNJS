@@ -463,13 +463,104 @@ function isTrainDoneDefaultFunc(DATAS, TARGS, CALCS, eps)
   return(isOK);
 }
 
-function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, REP_N, isTrainDoneFunc)
+// Training progress reporter
+
+function TrainProgress()
 {
-  if (MAX_N == null)       { MAX_N = 50000; }
-  if (REP_N == null)       { REP_N =   100; } // report interval
-  if (SPEED == null)       { SPEED = 0.125; }
+  var that = this;
+
+  that.onTrainingBegin = function(args) { };
+  that.onTrainingStep  = function(args, i, maxCount) { return true; }; // return false to abort training
+  that.onTrainingEnd   = function(args, isOk) { };
+};
+
+TrainProgress.TrainingArgs = function(NET, DATAS, TARGS, SPEED, maxStepsCount) // args param to events
+{
+  this.NET   = NET;
+  this.DATAS = DATAS;
+  this.TARGS = TARGS;
+  this.SPEED = SPEED;
+
+  this.maxStepsCount = maxStepsCount;
+};
+
+TrainProgress.TrainingStep = function(CALCS, stepIndex) // args param to step
+{
+  this.CALCS = CALCS;
+  this.stepIndex = stepIndex;
+};
+
+function ConsoleTrainProgress(reportInterval)
+{
+  var that = this;
+
+  var DEFAULT_REPORT_INTERVAL = 100;
+
+  if (reportInterval == null)
+  {
+    reportInterval = DEFAULT_REPORT_INTERVAL;
+  }
+  else if (reportInterval < 0)
+  {
+    reportInterval = 0;
+  }
+
+  TrainProgress.call(this);
+
+  that.onTrainingBegin = function(args) { console.log('TRAINING Started', args.SPEED); };
+
+  var lastSeenIndex = 0;
+
+  that.onTrainingStep  = function(args, step)
+  { 
+    lastSeenIndex = step.stepIndex;
+
+    var n     = step.stepIndex + 1;
+    var MAX_N = args.maxStepsCount;
+    var DATAS = args.DATAS;
+    var TARGS = args.TARGS;
+    var CALCS = step.CALCS;
+
+    if ((reportInterval > 0) && ((n % reportInterval) == 0))
+    {
+      for (var s = 0; s < DATAS.length; s++)
+      {
+        console.log('TRAINING Result.N[n,s]', MAX_N, n, s, DATAS[s], TARGS[s], CALCS[s]);
+      }
+    }
+
+    return true; 
+  };
+
+  that.onTrainingEnd   = function(args, isOk)
+  {
+    var n = lastSeenIndex + 1;
+    var NET = args.NET;
+    if (isOk)
+    {
+      console.log('TRAINING OK', 'iterations:'+n, NET);
+    }
+    else
+    {
+      console.log('TRAINING FAILED', 'timeout:'+n, NET);
+    }
+  };
+}
+
+var DEFAULT_TRAIN_COUNT    = 50000;
+var DEFAULT_TRAINING_SPEED = 0.125;
+
+/// Train the neural network
+function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainDoneFunc)
+{
+  if (MAX_N == null)       { MAX_N = DEFAULT_TRAIN_COUNT; }
+  if (SPEED == null)       { SPEED = DEFAULT_TRAINING_SPEED; }
 
   if (isTrainDoneFunc == null) { isTrainDoneFunc = isTrainDoneDefaultFunc; }
+
+  var trainArgs = new TrainProgress.TrainingArgs(NET, DATAS, TARGS, SPEED, MAX_N);
+
+  if (progressReporter != null) { progressReporter.onTrainingBegin(trainArgs); }
 
   var isDone = false;
   for (var n = 0; (n < MAX_N) && (!isDone); n++)
@@ -480,18 +571,18 @@ function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, REP_N, isTrainDoneFunc)
       CALCS.push(doProc(NET, DATAS[s])); // Fill output
     }
 
-    isDone = isTrainDoneFunc(DATAS, TARGS, CALCS);
-
-    if ((REP_N != null) && (REP_N != 0))
-    {
-      if (((n % REP_N) == 0) || (isDone))
+    if (progressReporter != null)
+    { 
+      var trainStep = new TrainProgress.TrainingStep(CALCS, n);
+      if (progressReporter.onTrainingStep(trainArgs, trainStep) === false)
       {
-        for (var s = 0; s < DATAS.length; s++)
-        {
-          console.log('Result.N[n,s]', MAX_N, n, s, DATAS[s], TARGS[s], CALCS[s]);
-        }
+        // Abort training
+        progressReporter.onTrainingEnd(trainArgs, false);
+        return(false); 
       }
     }
+
+    isDone = isTrainDoneFunc(DATAS, TARGS, CALCS);
 
     if (!isDone)
     {
@@ -502,16 +593,12 @@ function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, REP_N, isTrainDoneFunc)
     }
   }
 
-  if (isDone)
-  {
-    if ((REP_N != null) && (REP_N != 0)) { console.log('Training OK', 'iterations:'+n, NET); }
-    return(true);
+  if (progressReporter != null)
+  { 
+    progressReporter.onTrainingEnd(trainArgs, isDone);
   }
-  else
-  {
-    if ((REP_N != null) && (REP_N != 0)) { console.log('Training FAILED', 'timeout:'+MAX_N, NET ); }
-    return(false);
-  }
+
+  return(isDone);
 }
 
 // Some internals
@@ -533,6 +620,9 @@ NCore.BiasNeuron = BiasNeuron;
 NCore.Layer   = Layer;
 
 NCore.doProc  = doProc;
+
+NCore.TrainProgress = TrainProgress;
+NCore.ConsoleTrainProgress = ConsoleTrainProgress;
 NCore.doTrain = doTrain;
 
 // Aux

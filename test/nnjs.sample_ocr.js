@@ -393,7 +393,7 @@ function sampleOcrNetwork()
   dumpSamples(DATAS, DATAS.length / DATASE.length);
 
   console.log('Training, please wait ...');
-  if (!NN.doTrain(NET, DATAS, TARGS, null, null, 0))
+  if (!NN.doTrain(NET, DATAS, TARGS, null, null, new NN.ConsoleTrainProgress(0)))
   {
     console.log('Training failed!', NET);
     return(false);
