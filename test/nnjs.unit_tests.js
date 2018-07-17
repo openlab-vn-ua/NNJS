@@ -185,6 +185,85 @@ function doUnitTestRNG2()
   return(isOk);
 }
 
+var TEST_RNG_MAX_COUNT = 1000000;
+
+function getTestRNGCountSeed()
+{ 
+  return(42); 
+}
+
+function doUnitTestRNG3()
+{
+  var isOk = true;
+  var TRNG = new Random(getTestRNGCountSeed());
+  var r;
+  for (var i = 0; i < TEST_RNG_MAX_COUNT; i++)
+  {
+    r = TRNG.nextFloat();
+    if (r < 0) { isOk = false; break; }
+    if (r >= 1.0) { isOk = false; break; }
+  }
+  if (!isOk) { console.log('FAIL', r); }
+  return(isOk);
+}
+
+function doUnitTestRNG4()
+{
+  var isOk = true;
+  var TRNG = new Random(getTestRNGCountSeed());
+  var r;
+  for (var i = 0; i < TEST_RNG_MAX_COUNT; i++)
+  {
+    r = TRNG.randFloat();
+    if (r < 0) { isOk = false; break; }
+    if (r > 1.0) { isOk = false; break; }
+  }
+  if (!isOk) { console.log('FAIL', r); }
+  return(isOk);
+}
+
+function doUnitTestRNG5()
+{
+  var isOk = true;
+  var TRNG = new Random(getTestRNGCountSeed());
+  var r;
+  var TMAX = TRNG.RAND_MAX / 64.0;
+  var cmax = 0;
+  for (var i = 0; i < TEST_RNG_MAX_COUNT; i++)
+  {
+    r = TRNG.randFloat(TMAX);
+    if (r < 0) { isOk = false; break; }
+    if (r > TMAX) { isOk = false; break; }
+    if (r == TMAX) { cmax++; }
+  }
+  if (!isOk) { console.log('FAIL', r); }
+  //if (isOk) { if (cmax <= 0) { isOk = false; console.log('FAIL: no max found'); } }
+  return(isOk);
+}
+
+function doUnitTestRNG6()
+{
+  var isOk = true;
+  var TRNG = new Random(getTestRNGCountSeed());
+  var r;
+  var TMIN = 3333;
+  var TMAX = 5555;
+  var cmin = 0;
+  var cmax = 0;
+  for (var i = 0; i < TEST_RNG_MAX_COUNT; i++)
+  {
+    r = TRNG.randFloat(TMIN, TMAX);
+    if (r < TMIN) { isOk = false; break; }
+    if (r > TMAX) { isOk = false; break; }
+    if (r == TMIN) { cmin++; }
+    if (r == TMAX) { cmax++; }
+  }
+  if (!isOk) { console.log('FAIL', r); }
+  //if (isOk) { if (cmax <= 0) { isOk = false; console.log('FAIL: no max found'); } }
+  //if (isOk) { if (cmin <= 0) { isOk = false; console.log('FAIL: no min found'); } }
+  return(isOk);
+}
+
 function runUnitTests()
 {
   var TESTS = 
@@ -192,6 +271,10 @@ function runUnitTests()
     doUnitTest1, 
     doUnitTestRNG1, 
     doUnitTestRNG2, 
+    doUnitTestRNG3, 
+    doUnitTestRNG4, 
+    doUnitTestRNG5, 
+    doUnitTestRNG6, 
   ];
 
   var count = TESTS.length;
