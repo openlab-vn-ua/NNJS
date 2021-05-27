@@ -7,13 +7,25 @@
 
 function Random(seed)
 {
-  var that = this;
+  var that = this || {}; // works with both new Random(...) or just Random(...)
+
+  // seed (state)
+
+  that._seed = null; // not initialized
+
+  that.srand = function(seed) // C-like API
+  {
+    if (seed < 0) { seed = -seed; }
+    if (seed == 0) { seed = 1; }
+    that._seed = seed % 2147483647;
+  }
+
+  that.setSeed = that.srand; // Synonym
 
   // Constructor
 
-  if (seed < 0) { seed = -seed; }
-  if (seed == 0) { seed = 1; }
-  that._seed = seed % 2147483647;
+  if (seed == null) { seed = 42; }
+  that.srand(seed);
 
   // Constants                        
 
@@ -74,5 +86,7 @@ function Random(seed)
       return (that.rand() * 1.0 / that.RAND_MAX_VALUE) * diff + min;
     }
   }
+
+  return that;
 }
 

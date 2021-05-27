@@ -2,10 +2,10 @@
 // Open Source Software under MIT License
 // [Unit test]
 
-// Require nnjs.js
+// Utils
+// ----------------------------------------------------
 
-// Test case(s)
-// ---------------------------------
+function STR(x) { return '' + x; }
 
 function isFloatAlmostEqual(a,b,eps)
 {
@@ -24,6 +24,10 @@ function isFloatListAlmostEqual(a,b,eps)
   }
   return true;
 }
+
+// Test case(s) [NN]
+// ----------------------------------------------------
+// require nnjs.js
 
 function doUnitTest1()
 {
@@ -88,6 +92,8 @@ function doUnitTest1()
   var pOut = OUT.neurons[0].inputs; // Pre-output layer (L1)
   var DWS = NN.Internal.getDeltaWeights(OUT.neurons[0], DOS);
 
+  //console.log('INFO: delta weights', DWS);
+
   if (!isFloatListAlmostEqual(DWS, [ -0.1850689045809531, -0.1721687291239315, -0.19608871636883077 ]))
   {
     console.log('FAIL: delta weights', DWS); // How much w of prev neurons have to be adjusted
@@ -126,18 +132,22 @@ function doUnitTest1()
     NWSL1.push(L1.neurons[i].nw);
   }
 
+  //console.log('INFO: delta weights L1', DWSL1);
+
   if (!isFloatListAlmostEqual(DWSL1[0], [-0.08866949824511623 , -0.08866949824511623 ]) ||
       !isFloatListAlmostEqual(DWSL1[1], [-0.045540261294143396, -0.045540261294143396]) ||
       !isFloatListAlmostEqual(DWSL1[2], [-0.032156856991522986, -0.032156856991522986]))
   {
-    console.log('FAIL: delta weights L1', [DWSL1]); // array of DOS for prev layer
+    console.log('FAIL: delta weights L1', DWSL1); // [] array of DOS for prev layer
   }
+
+  //console.log('INFO: new weights L1', NWSL1);
 
   if (!isFloatListAlmostEqual(NWSL1[0], [0.7113305017548838, 0.11133050175488378]) ||
       !isFloatListAlmostEqual(NWSL1[1], [0.3544597387058566, 0.8544597387058567 ]) ||
       !isFloatListAlmostEqual(NWSL1[2], [0.267843143008477 , 0.467843143008477  ]))
   {
-    console.log('FAIL: new weights L1', [NWSL1]); // array of NW for prev layer
+    console.log('FAIL: new weights L1', NWSL1); // [] array of NW for prev layer
   }
 
   // assign
@@ -160,6 +170,62 @@ function doUnitTest1()
   NN.DIV_IN_TRAIN = ODT;
 
   return isOk;
+}
+
+// Test case(s) [PRNG]
+// ----------------------------------------------------
+// require prng.js
+
+function doUnitTestRNG0()
+{
+  var isOk = true;
+  var i = 0;
+  var r;
+  var TRNG = new Random(1);
+  while (isOk)
+  {
+    i++;
+    r = TRNG.next();
+
+    if (i == 1) { isOk = (16807 == r); }
+    if (i == 2) { isOk = (282475249 == r); }
+    if (i == 3) { isOk = (1622650073 == r); }
+    if (i == 4) { isOk = (984943658 == r); }
+    if (i == 5) { isOk = (1144108930 == r); }
+    if (i == 6) { isOk = (470211272 == r); }
+    if (i == 7) { isOk = (101027544 == r); }
+    if (i == 8) { isOk = (1457850878 == r); }
+    if (i == 9) { isOk = (1458777923 == r); }
+    if (i == 10) { isOk = (2007237709 == r); }
+
+    if (i == 9998) { isOk = (925166085 == r); }
+    if (i == 9999) { isOk = (1484786315 == r); }
+    if (i == 10000) { isOk = (1043618065 == r); }
+    if (i == 10001) { isOk = (1589873406 == r); }
+    if (i == 10002) { isOk = (2010798668 == r); }
+
+    if (i == 1000000) { isOk = (1227283347 == r); }
+    if (i == 2000000) { isOk = (1808217256 == r); }
+    if (i == 3000000) { isOk = (1140279430 == r); }
+    if (i == 4000000) { isOk = (851767375 == r); }
+    if (i == 5000000) { isOk = (1885818104 == r); }
+
+    if (i == 99000000) { isOk = (168075678 == r); }
+    if (i == 100000000) { isOk = (1209575029 == r); }
+    if (i == 101000000) { isOk = (941596188 == r); }
+
+    if (i == 2147483643) { isOk = (1207672015 == r); }
+    if (i == 2147483644) { isOk = (1475608308 == r); }
+    if (i == 2147483645) { isOk = (1407677000 == r); }
+
+    // Starting the sequence again with the original seed
+
+    if (i == 2147483646) { isOk = (1 == TRNG.next()); }
+    if (i == 2147483647) { isOk = (16807 == TRNG.next()); }
+
+    if (i > 2000000) { break; } // if you no not want to wait too long
+  }
+  return(isOk);
 }
 
 function doUnitTestRNG1()
@@ -195,36 +261,48 @@ function getTestRNGCountSeed()
 
 function doUnitTestRNG3()
 {
+  var NAME = 'RNG3:';
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
+  var cmin = 0;
   for (var i = 0; i < TEST_RNG_MAX_COUNT; i++)
   {
     r = TRNG.nextFloat();
     if (r < 0) { isOk = false; break; }
-    if (r >= 1.0) { isOk = false; break; }
+    if (r == 0) { cmin++; }
+    if (r >= 1.0) { isOk = false; break; } // 1.0 not inclusive
   }
-  if (!isOk) { console.log('FAIL', r); }
+  //if (isOk) { if (cmin <= 0) { console.log(NAME+'WARN: no min found'); } }
+  if (!isOk) { console.log(NAME+'FAIL', r); }
   return(isOk);
 }
 
 function doUnitTestRNG4()
 {
+  var NAME = 'RNG4:';
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
+  var cmin = 0;
+  var cmax = 0;
   for (var i = 0; i < TEST_RNG_MAX_COUNT; i++)
   {
     r = TRNG.randFloat();
     if (r < 0) { isOk = false; break; }
+    if (r == 0) { cmin++; }
     if (r > 1.0) { isOk = false; break; }
+    if (r == 1.0) { cmax++; }
   }
-  if (!isOk) { console.log('FAIL', r); }
+  //if (isOk) { if (cmax <= 0) { console.log(NAME+"WARN: no max found"); } }
+  //if (isOk) { if (cmin <= 0) { console.log(NAME+"WARN: no min found"); } }
+  if (!isOk) { console.log(NAME+'FAIL', r); }
   return(isOk);
 }
 
 function doUnitTestRNG5()
 {
+  var NAME = 'RNG5:';
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -237,13 +315,14 @@ function doUnitTestRNG5()
     if (r > TMAX) { isOk = false; break; }
     if (r == TMAX) { cmax++; }
   }
-  if (!isOk) { console.log('FAIL', r); }
-  //if (isOk) { if (cmax <= 0) { isOk = false; console.log('FAIL: no max found'); } }
+  //if (isOk) { if (cmax <= 0) { console.log(NAME+'WARN: no max found'); } }
+  if (!isOk) { console.log(NAME+'FAIL', r); }
   return(isOk);
 }
 
 function doUnitTestRNG6()
 {
+  var NAME = 'RNG6:';
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -259,17 +338,21 @@ function doUnitTestRNG6()
     if (r == TMIN) { cmin++; }
     if (r == TMAX) { cmax++; }
   }
-  if (!isOk) { console.log('FAIL', r); }
-  //if (isOk) { if (cmax <= 0) { isOk = false; console.log('FAIL: no max found'); } }
-  //if (isOk) { if (cmin <= 0) { isOk = false; console.log('FAIL: no min found'); } }
+  //if (isOk) { if (cmax <= 0) { console.log(NAME+'WARN: no max found'); } }
+  //if (isOk) { if (cmin <= 0) { console.log(NAME+'WARN: no min found'); } }
+  if (!isOk) { console.log(NAME+'FAIL', r); }
   return(isOk);
 }
+
+// Runner
+// ----------------------------------------------------
 
 function runUnitTests()
 {
   var TESTS = 
   [ 
     doUnitTest1, 
+    doUnitTestRNG0, 
     doUnitTestRNG1, 
     doUnitTestRNG2, 
     doUnitTestRNG3, 
@@ -286,17 +369,17 @@ function runUnitTests()
     if (!test())
     {
       failed++;
-      console.log('UNIT '+i+' failed');
+      console.log('UNIT '+STR(i)+' failed');
     }
   }
 
   if (failed == 0)
   {
-    console.log('UNIT TESTS OK '+count+'');
+    console.log('UNIT TESTS OK '+STR(count)+'');
   }
   else
   {
-    console.log('UNIT TESTS FAILED '+failed+' of '+count+'');
+    console.log('UNIT TESTS FAILED '+STR(failed)+' of '+STR(count)+'');
   }
 
   return(failed == 0);
