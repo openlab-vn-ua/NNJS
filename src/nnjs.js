@@ -507,7 +507,7 @@ function ConsoleTrainProgress(reportInterval)
 
   TrainProgress.call(this);
 
-  that.onTrainingBegin = function(args) { console.log('TRAINING Started', args.SPEED); };
+  that.onTrainingBegin = function(args) { console.log("TRAINING Started", args.SPEED); };
 
   var lastSeenIndex = 0;
 
@@ -525,7 +525,7 @@ function ConsoleTrainProgress(reportInterval)
     {
       for (var s = 0; s < DATAS.length; s++)
       {
-        console.log('TRAINING Result.N[n,s]', MAX_N, n, s, DATAS[s], TARGS[s], CALCS[s]);
+        console.log("TRAINING Result.N[n,s]", MAX_N, n, s, DATAS[s], TARGS[s], CALCS[s]);
       }
     }
 
@@ -538,11 +538,11 @@ function ConsoleTrainProgress(reportInterval)
     var NET = args.NET;
     if (isOk)
     {
-      console.log('TRAINING OK', 'iterations:'+n, NET);
+      console.log("TRAINING OK", "iterations:"+n, NET);
     }
     else
     {
-      console.log('TRAINING FAILED', 'timeout:'+n, NET);
+      console.log("TRAINING FAILED", "timeout:"+n, NET);
     }
   };
 }

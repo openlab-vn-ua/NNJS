@@ -5,7 +5,7 @@
 // Utils
 // ----------------------------------------------------
 
-function STR(x) { return '' + x; }
+function STR(x) { return "" + x; }
 
 function isFloatAlmostEqual(a,b,eps)
 {
@@ -70,7 +70,7 @@ function doUnitTest1()
   if (!isFloatAlmostEqual(CALC,0.7743802720529458))
   {
     isOk = false;
-    console.log('FAIL: Result', CALC);
+    console.log("FAIL: Result", CALC);
   }
  
   // Adjust Output layer
@@ -80,23 +80,23 @@ function doUnitTest1()
   if (!isFloatAlmostEqual(OSME,-0.7743802720529458))
   {
     isOk = false;
-    console.log('FAIL: output sum margin of error', OSME);
+    console.log("FAIL: output sum margin of error", OSME);
   }
 
   var DOS = NN.Internal.getDeltaOutputSum(OUT.neurons[0], OSME);
   if (!isFloatAlmostEqual(DOS, -0.13529621033156358))
   {
-    console.log('FAIL: delta output sum', DOS); // How much sum have to be adjusted
+    console.log("FAIL: delta output sum", DOS); // How much sum have to be adjusted
   }
 
   var pOut = OUT.neurons[0].inputs; // Pre-output layer (L1)
   var DWS = NN.Internal.getDeltaWeights(OUT.neurons[0], DOS);
 
-  //console.log('INFO: delta weights', DWS);
+  //console.log("INFO: delta weights", DWS);
 
   if (!isFloatListAlmostEqual(DWS, [ -0.1850689045809531, -0.1721687291239315, -0.19608871636883077 ]))
   {
-    console.log('FAIL: delta weights', DWS); // How much w of prev neurons have to be adjusted
+    console.log("FAIL: delta weights", DWS); // How much w of prev neurons have to be adjusted
   }
 
   OUT.neurons[0].initNewWeights();
@@ -106,7 +106,7 @@ function doUnitTest1()
 
   if (!isFloatListAlmostEqual(NWS, [ 0.11493109541904689, 0.3278312708760685, 0.7039112836311693 ]))
   {
-    console.log('FAIL: new weights', NWS); // New w of output
+    console.log("FAIL: new weights", NWS); // New w of output
   }
 
   // calclulate how to change outputs of prev layer (DOS for each neuton of prev layer)
@@ -116,7 +116,7 @@ function doUnitTest1()
 
   if (!isFloatListAlmostEqual(DHS, [ -0.08866949824511623, -0.045540261294143396, -0.032156856991522986 ]))
   {
-    console.log('FAIL: delta hidden sums', DHS); // array of DOS for prev layer
+    console.log("FAIL: delta hidden sums", DHS); // array of DOS for prev layer
   }
 
   // Proc the hidden layer
@@ -132,22 +132,22 @@ function doUnitTest1()
     NWSL1.push(L1.neurons[i].nw);
   }
 
-  //console.log('INFO: delta weights L1', DWSL1);
+  //console.log("INFO: delta weights L1", DWSL1);
 
   if (!isFloatListAlmostEqual(DWSL1[0], [-0.08866949824511623 , -0.08866949824511623 ]) ||
       !isFloatListAlmostEqual(DWSL1[1], [-0.045540261294143396, -0.045540261294143396]) ||
       !isFloatListAlmostEqual(DWSL1[2], [-0.032156856991522986, -0.032156856991522986]))
   {
-    console.log('FAIL: delta weights L1', DWSL1); // [] array of DOS for prev layer
+    console.log("FAIL: delta weights L1", DWSL1); // [] array of DOS for prev layer
   }
 
-  //console.log('INFO: new weights L1', NWSL1);
+  //console.log("INFO: new weights L1", NWSL1);
 
   if (!isFloatListAlmostEqual(NWSL1[0], [0.7113305017548838, 0.11133050175488378]) ||
       !isFloatListAlmostEqual(NWSL1[1], [0.3544597387058566, 0.8544597387058567 ]) ||
       !isFloatListAlmostEqual(NWSL1[2], [0.267843143008477 , 0.467843143008477  ]))
   {
-    console.log('FAIL: new weights L1', NWSL1); // [] array of NW for prev layer
+    console.log("FAIL: new weights L1", NWSL1); // [] array of NW for prev layer
   }
 
   // assign
@@ -164,7 +164,7 @@ function doUnitTest1()
   if (!isFloatAlmostEqual(CALC2,0.6917258326007417))
   {
     isOk = false;
-    console.log('FAIL: Result after adjust', CALC2); // should be 0.6917258326007417
+    console.log("FAIL: Result after adjust", CALC2); // should be 0.6917258326007417
   }
 
   NN.DIV_IN_TRAIN = ODT;
@@ -261,7 +261,7 @@ function getTestRNGCountSeed()
 
 function doUnitTestRNG3()
 {
-  var NAME = 'RNG3:';
+  var NAME = "RNG3:";
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -273,14 +273,14 @@ function doUnitTestRNG3()
     if (r == 0) { cmin++; }
     if (r >= 1.0) { isOk = false; break; } // 1.0 not inclusive
   }
-  //if (isOk) { if (cmin <= 0) { console.log(NAME+'WARN: no min found'); } }
-  if (!isOk) { console.log(NAME+'FAIL', r); }
+  //if (isOk) { if (cmin <= 0) { console.log(NAME+"WARN: no min found"); } }
+  if (!isOk) { console.log(NAME+"FAIL", r); }
   return(isOk);
 }
 
 function doUnitTestRNG4()
 {
-  var NAME = 'RNG4:';
+  var NAME = "RNG4:";
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -296,13 +296,13 @@ function doUnitTestRNG4()
   }
   //if (isOk) { if (cmax <= 0) { console.log(NAME+"WARN: no max found"); } }
   //if (isOk) { if (cmin <= 0) { console.log(NAME+"WARN: no min found"); } }
-  if (!isOk) { console.log(NAME+'FAIL', r); }
+  if (!isOk) { console.log(NAME+"FAIL", r); }
   return(isOk);
 }
 
 function doUnitTestRNG5()
 {
-  var NAME = 'RNG5:';
+  var NAME = "RNG5:";
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -315,14 +315,14 @@ function doUnitTestRNG5()
     if (r > TMAX) { isOk = false; break; }
     if (r == TMAX) { cmax++; }
   }
-  //if (isOk) { if (cmax <= 0) { console.log(NAME+'WARN: no max found'); } }
-  if (!isOk) { console.log(NAME+'FAIL', r); }
+  //if (isOk) { if (cmax <= 0) { console.log(NAME+"WARN: no max found"); } }
+  if (!isOk) { console.log(NAME+"FAIL", r); }
   return(isOk);
 }
 
 function doUnitTestRNG6()
 {
-  var NAME = 'RNG6:';
+  var NAME = "RNG6:";
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -338,9 +338,9 @@ function doUnitTestRNG6()
     if (r == TMIN) { cmin++; }
     if (r == TMAX) { cmax++; }
   }
-  //if (isOk) { if (cmax <= 0) { console.log(NAME+'WARN: no max found'); } }
-  //if (isOk) { if (cmin <= 0) { console.log(NAME+'WARN: no min found'); } }
-  if (!isOk) { console.log(NAME+'FAIL', r); }
+  //if (isOk) { if (cmax <= 0) { console.log(NAME+"WARN: no max found"); } }
+  //if (isOk) { if (cmin <= 0) { console.log(NAME+"WARN: no min found"); } }
+  if (!isOk) { console.log(NAME+"FAIL", r); }
   return(isOk);
 }
 
@@ -369,17 +369,17 @@ function runUnitTests()
     if (!test())
     {
       failed++;
-      console.log('UNIT '+STR(i)+' failed');
+      console.log("UNIT "+STR(i)+" failed");
     }
   }
 
   if (failed == 0)
   {
-    console.log('UNIT TESTS OK '+STR(count)+'');
+    console.log("UNIT TESTS OK "+STR(count)+"");
   }
   else
   {
-    console.log('UNIT TESTS FAILED '+STR(failed)+' of '+STR(count)+'');
+    console.log("UNIT TESTS FAILED "+STR(failed)+" of "+STR(count)+"");
   }
 
   return(failed == 0);

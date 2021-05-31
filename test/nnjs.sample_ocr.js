@@ -11,115 +11,115 @@ function sampleOcrGetSamples()
 {
   // Return array of array of input samples of each letter [ [IA0, IA1, IA2 ...], [IB0, ...], [IC0, ...] ]
 
-  var IA0 = ''
-           +'         '
-           +'    *    '
-           +'   * *   '
-           +'  *   *  '
-           +'  *****  '
-           +'  *   *  '
-           +'  *   *  '
-           +'         '
-           +'';
+  var IA0 = ""
+           +"         "
+           +"    *    "
+           +"   * *   "
+           +"  *   *  "
+           +"  *****  "
+           +"  *   *  "
+           +"  *   *  "
+           +"         "
+           +"";
 
-  var IA1 = ''
-           +'         '
-           +'    *    '
-           +'  ** **  '
-           +' **   ** '
-           +' ******* '
-           +' **   ** '
-           +' **   ** '
-           +'         '
-           +'';
+  var IA1 = ""
+           +"         "
+           +"    *    "
+           +"  ** **  "
+           +" **   ** "
+           +" ******* "
+           +" **   ** "
+           +" **   ** "
+           +"         "
+           +"";
 
-  var IA2 = ''
-           +'         '
-           +'   ***   '
-           +'  *   *  '
-           +'  *   *  '
-           +'  *****  '
-           +'  *   *  '
-           +' *** *** '
-           +'         '
-           +'';
+  var IA2 = ""
+           +"         "
+           +"   ***   "
+           +"  *   *  "
+           +"  *   *  "
+           +"  *****  "
+           +"  *   *  "
+           +" *** *** "
+           +"         "
+           +"";
 
-  var IB0 = ''
-           +'         '
-           +'  ****   '
-           +'  *   *  '
-           +'  ****   '
-           +'  *   *  '
-           +'  *   *  '
-           +'  ****   '
-           +'         '
-           +'';
+  var IB0 = ""
+           +"         "
+           +"  ****   "
+           +"  *   *  "
+           +"  ****   "
+           +"  *   *  "
+           +"  *   *  "
+           +"  ****   "
+           +"         "
+           +"";
 
-  var IB1 = ''
-           +'         '
-           +' *****   '
-           +' **  **  '
-           +' *****   '
-           +' **   ** '
-           +' **   ** '
-           +' *****   '
-           +'         '
-           +'';
+  var IB1 = ""
+           +"         "
+           +" *****   "
+           +" **  **  "
+           +" *****   "
+           +" **   ** "
+           +" **   ** "
+           +" *****   "
+           +"         "
+           +"";
 
-  var IC0 = ''
-           +'         '
-           +'   ***   '
-           +'  *   *  '
-           +'  *      '
-           +'  *      '
-           +'  *   *  '
-           +'   ***   '
-           +'         '
-           +'';
+  var IC0 = ""
+           +"         "
+           +"   ***   "
+           +"  *   *  "
+           +"  *      "
+           +"  *      "
+           +"  *   *  "
+           +"   ***   "
+           +"         "
+           +"";
 
-  var IC1 = ''
-           +'         '
-           +'   ***   '
-           +' **   ** '
-           +' **      '
-           +' **      '
-           +' **   ** '
-           +'   ***   '
-           +'         '
-           +'';
+  var IC1 = ""
+           +"         "
+           +"   ***   "
+           +" **   ** "
+           +" **      "
+           +" **      "
+           +" **   ** "
+           +"   ***   "
+           +"         "
+           +"";
 
-  var ID0 = ''
-           +'         '
-           +'  ****   '
-           +'  *   *  '
-           +'  *   *  '
-           +'  *   *  '
-           +'  *   *  '
-           +'  ****   '
-           +'         '
-           +'';
+  var ID0 = ""
+           +"         "
+           +"  ****   "
+           +"  *   *  "
+           +"  *   *  "
+           +"  *   *  "
+           +"  *   *  "
+           +"  ****   "
+           +"         "
+           +"";
 
-  var ID1 = ''
-           +'         '
-           +' *****   '
-           +' **   ** '
-           +' **   ** '
-           +' **   ** '
-           +' **   ** '
-           +' *****   '
-           +'         '
-           +'';
+  var ID1 = ""
+           +"         "
+           +" *****   "
+           +" **   ** "
+           +" **   ** "
+           +" **   ** "
+           +" **   ** "
+           +" *****   "
+           +"         "
+           +"";
 
-  var ID2 = ''
-           +'         '
-           +' *****   '
-           +'  *   *  '
-           +'  *   *  '
-           +'  *   *  '
-           +'  *   *  '
-           +' *****   '
-           +'         '
-           +'';
+  var ID2 = ""
+           +"         "
+           +" *****   "
+           +"  *   *  "
+           +"  *   *  "
+           +"  *   *  "
+           +"  *   *  "
+           +" *****   "
+           +"         "
+           +"";
 
   function getLNArray(L)
   {
@@ -129,7 +129,7 @@ function sampleOcrGetSamples()
     {
       for (var x = 0; x < SAMPLE_OCR_SX; x++)
       {
-        R.push(L[y*SAMPLE_OCR_SX+x] == '*' ? 1 : 0);
+        R.push(L[y*SAMPLE_OCR_SX+x] == "*" ? 1 : 0);
       }
     }
 
@@ -154,7 +154,7 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
   if (addBottomSep == null) { addBottomSep = false; }
   if (addRightSep == null)  { addRightSep = false; }
 
-  function inText(i) { if (inT == null) { return(''); } else { return(inT[i]); } }
+  function inText(i) { if (inT == null) { return(""); } else { return(inT[i]); } }
 
   // T will be SAMPLE_OCR_SY+1+1 height
 
@@ -173,13 +173,13 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
   }
   if (addBottomSep) { T.push(inText(ty++)); }
 
-  var t = ''; 
-  if (addLeftSep) { t += '!'; }
+  var t = ""; 
+  if (addLeftSep) { t += "!"; }
   for (var x = 0; x < SAMPLE_OCR_SX; x++)
   {
-    t += '-';
+    t += "-";
   }
-  if (addRightSep) { t += '!'; }
+  if (addRightSep) { t += "!"; }
 
   var SEP = t; // sep line
 
@@ -187,32 +187,32 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
   if (addTopSep) { T[ty++] += SEP; }
   for (var y = 0; y < SAMPLE_OCR_SY; y++)
   {
-    var t = ''; 
-    if (addLeftSep) { t += '!'; }
+    var t = ""; 
+    if (addLeftSep) { t += "!"; }
     for (var x = 0; x < SAMPLE_OCR_SX; x++)
     {
       var v = L[y*SAMPLE_OCR_SX+x];
-      var c = '';
+      var c = "";
 
       if (v <= 0)
       {
-        c = ' ';
+        c = " ";
       }
       else if (v >= 1)
       {
-        c = '\u2588'; // '█'; // '*';
+        c = "\u2588"; // "█"; // "*";
       }
       else
       {
         // v = Math.floor(v * 10); c = v.toString()[0];
         v = Math.floor(v * 10);
-        var F = '\u2591\u2591\u2591'+'\u2592\u2592\u2592\u2593'+'\u2593\u2593\u2593'; // '░░░▒▒▒▒▓▓▓'; // '0123456789';
+        var F = "\u2591\u2591\u2591"+"\u2592\u2592\u2592\u2593"+"\u2593\u2593\u2593"; // "░░░▒▒▒▒▓▓▓"; // "0123456789";
         c = F[v];
       }
 
       t += c;
     }
-    if (addRightSep) { t += '!'; }
+    if (addRightSep) { t += "!"; }
     T[ty++] += t;
   }
   if (addBottomSep) { T[ty++] += SEP; }
@@ -392,14 +392,14 @@ function sampleOcrNetwork()
 
   dumpSamples(DATAS, DATAS.length / DATASE.length);
 
-  console.log('Training, please wait ...');
+  console.log("Training, please wait ...");
   if (!NN.doTrain(NET, DATAS, TARGS, null, null, new NN.ConsoleTrainProgress(0)))
   {
-    console.log('Training failed!', NET);
+    console.log("Training failed!", NET);
     return(false);
   }
 
-  console.log('Training complete', NET);
+  console.log("Training complete", NET);
 
   // Verification
 
@@ -464,6 +464,10 @@ function sampleOcrNetwork()
     var vdif = 0.15; // max diff for smart verification
     var veps = 0.4; // epsilon for strict verification
 
+    var statGood = 0;
+    var statFail = 0;
+    var statWarn = 0;
+
     var isOK = true;
     for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
     {
@@ -478,22 +482,25 @@ function sampleOcrNetwork()
       //if (!isSimpleMatchOK) // warn
       if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex)) // fail
       {
-        var status = '';
+        var status = "";
 
         if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex))
         {
-          status = 'FAIL';
+          status = "FAIL";
+          statFail++;
         }
         else if (!isSimpleMatchOK)
         {
-          status = 'WARN';
+          status = "WARN";
+          statWarn++;
         }
         else
         {
-          status = 'OK.OK.OK.OK.OK.OK.OK.OK';
+          status = "OK.OK.OK.OK.OK.OK.OK.OK";
+          statGood++;
         }
 
-        console.log('Verification step '+stepName+'['+dataIndex+']'+':'+status+'', [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [ veps, vdif ]);
+        console.log("Verification step "+stepName+"["+dataIndex+"]"+":"+status+"", [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [ veps, vdif ]);
         var T = sampleAddLetTexts(DATAS[dataIndex], null, true, true, true, true);
         for (var lineIndex = 0; lineIndex < T.length; lineIndex++)
         {
@@ -501,14 +508,27 @@ function sampleOcrNetwork()
         }
         isOK = false;
       }
+      else
+      {
+        statGood++;
+      }
     }
 
-    if (isOK) { console.log('Verification step '+stepName+':OK'); }
+    if (isOK)
+    {
+      console.log("Verification step " + stepName + ":OK [100%]");
+    }
+    else
+    {
+      var statFull = statGood + statFail + statWarn;
+      function showPerc(val) { return val = ''+Math.round(val * 1000) / 10; }
+      console.log("Verification step " + stepName + ":Done:" + (" GOOD=" + showPerc(statGood / statFull)) + (" WARN=" + showPerc(statWarn / statFull)) + (" FAIL=" + showPerc(statFail / statFull)));
+    }
 
     return(isOK);
   }
 
-  verifyProc(NET, DATAS, TARGS, 'Source', DATAS.length / DATASE.length);
+  verifyProc(NET, DATAS, TARGS, "Source", DATAS.length / DATASE.length);
 
   // Create noised data
 
@@ -518,7 +538,7 @@ function sampleOcrNetwork()
     DATASN.push(getNoisedInput(DATAS[dataIndex],1));
   }
 
-  verifyProc(NET, DATASN, TARGS, 'Noised.F1', DATASN.length / DATASE.length);
+  verifyProc(NET, DATASN, TARGS, "Noised.F1", DATASN.length / DATASE.length);
 
   var DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
@@ -526,7 +546,7 @@ function sampleOcrNetwork()
     DATASN.push(getNoisedInput(DATAS[dataIndex],30,NOISE_TYPE_PIXEL_DARKER_LIGHTER));
   }
 
-  verifyProc(NET, DATASN, TARGS, 'Noised.DL30', DATASN.length / DATASE.length);
+  verifyProc(NET, DATASN, TARGS, "Noised.DL30", DATASN.length / DATASE.length);
 
   var DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
@@ -534,7 +554,7 @@ function sampleOcrNetwork()
     DATASN.push(getNoisedInput(DATAS[dataIndex],10,NOISE_TYPE_PIXEL_RANDOM));
   }
 
-  verifyProc(NET, DATASN, TARGS, 'Noised.R10', DATASN.length / DATASE.length);
+  verifyProc(NET, DATASN, TARGS, "Noised.R10", DATASN.length / DATASE.length);
 }
 
 //sampleOcrNetwork();
