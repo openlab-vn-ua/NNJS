@@ -7,11 +7,13 @@
 var SAMPLE_OCR_SX = 9;
 var SAMPLE_OCR_SY = 8;
 
+function emptyStr() { return ""; }
+
 function sampleOcrGetSamples()
 {
   // Return array of array of input samples of each letter [ [IA0, IA1, IA2 ...], [IB0, ...], [IC0, ...] ]
 
-  var IA0 = ""
+  var IA0 = emptyStr()
            +"         "
            +"    *    "
            +"   * *   "
@@ -22,7 +24,7 @@ function sampleOcrGetSamples()
            +"         "
            +"";
 
-  var IA1 = ""
+  var IA1 = emptyStr()
            +"         "
            +"    *    "
            +"  ** **  "
@@ -33,7 +35,7 @@ function sampleOcrGetSamples()
            +"         "
            +"";
 
-  var IA2 = ""
+  var IA2 = emptyStr()
            +"         "
            +"   ***   "
            +"  *   *  "
@@ -44,7 +46,7 @@ function sampleOcrGetSamples()
            +"         "
            +"";
 
-  var IB0 = ""
+  var IB0 = emptyStr()
            +"         "
            +"  ****   "
            +"  *   *  "
@@ -55,7 +57,7 @@ function sampleOcrGetSamples()
            +"         "
            +"";
 
-  var IB1 = ""
+  var IB1 = emptyStr()
            +"         "
            +" *****   "
            +" **  **  "
@@ -147,6 +149,66 @@ function sampleOcrGetSamples()
   return(I0);
 }
 
+// Train input preparation
+
+var NOISE_TYPE_PIXEL_FLIP = 0;
+var NOISE_TYPE_PIXEL_DARKER_LIGHTER = 1;
+var NOISE_TYPE_PIXEL_RANDOM = 2;
+
+function getNoisedInput(L, noiseCount, noiseType)
+{
+  // type: 0=flip pixel, 1=drarker/lighter
+  if (noiseType == null) { noiseType = NOISE_TYPE_PIXEL_FLIP; }
+
+  function makeNoise(value)
+  {
+    if (noiseType == NOISE_TYPE_PIXEL_DARKER_LIGHTER)
+    {
+      if (value <= 0) { return(NN.Internal.getRandom(0.0 , 0.49)); }
+      if (value >= 1) { return(NN.Internal.getRandom(0.51, 1.0 )); }
+      return(value);
+    }
+
+    if (noiseType == NOISE_TYPE_PIXEL_RANDOM)
+    {
+      return(NN.Internal.getRandom(0.0,1.0));
+    }
+
+    return(1-value); // flip pixel
+  }
+
+  if (noiseCount == null) { noiseCount = 0; }
+
+  var R = L.slice();
+
+  for (var i = 0; i < noiseCount; i++)
+  {
+    var noiseIndex = NN.Internal.getRandomInt(R.length);
+    R[noiseIndex] = makeNoise(R[noiseIndex]);
+  }
+
+  return(R);
+}
+
+function getShiftedImg(L, sx, sy)
+{
+  if (sx == null) { sx = 0; }
+  if (sy == null) { sy = 0; }
+
+  var R = [];
+  for (var y = 0; y < SAMPLE_OCR_SY; y++)
+  {
+    for (var x = 0; x < SAMPLE_OCR_SX; x++)
+    {
+      var ox = (x + -sx); ox = (ox < 0) ? SAMPLE_OCR_SX+ox : ox; ox %= SAMPLE_OCR_SX;
+      var oy = (y + -sy); oy = (oy < 0) ? SAMPLE_OCR_SY+oy : oy; oy %= SAMPLE_OCR_SY;
+      R.push(L[oy*SAMPLE_OCR_SX+ox]);
+    }
+  }
+
+  return(R);
+}
+
 function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
 {
   if (addTopSep == null)    { addTopSep = true; }
@@ -206,7 +268,7 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
       {
         // v = Math.floor(v * 10); c = v.toString()[0];
         v = Math.floor(v * 10);
-        var F = "\u2591\u2591\u2591"+"\u2592\u2592\u2592\u2593"+"\u2593\u2593\u2593"; // "░░░▒▒▒▒▓▓▓"; // "0123456789";
+        var F = [ "\u2591", "\u2591", "\u2591", "\u2592", "\u2592", "\u2592", "\u2593", "\u2593", "\u2593", "\u2593" ]; // "░░░▒▒▒▒▓▓▓"; // "0123456789";
         c = F[v];
       }
 
@@ -243,66 +305,6 @@ function sampleOcrNetwork()
     var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.ProcNeuron); L2.addNeuron(NN.BiasNeuron); L2.addInputAll(L1);
     var OUT = new NN.Layer(SAMPLES.length, NN.ProcNeuron); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
     NET = [IN, L1, L2, OUT];
-  }
-
-  // Train input preparation
-
-  var NOISE_TYPE_PIXEL_FLIP = 0;
-  var NOISE_TYPE_PIXEL_DARKER_LIGHTER = 1;
-  var NOISE_TYPE_PIXEL_RANDOM = 2;
-
-  function getNoisedInput(L, noiseCount, noiseType)
-  {
-    // type: 0=flip pixel, 1=drarker/lighter
-    if (noiseType == null) { noiseType = NOISE_TYPE_PIXEL_FLIP; }
-
-    function makeNoise(value)
-    {
-      if (noiseType == NOISE_TYPE_PIXEL_DARKER_LIGHTER)
-      {
-        if (value <= 0) { return(NN.Internal.getRandom(0.0 , 0.49)); }
-        if (value >= 1) { return(NN.Internal.getRandom(0.51, 1.0 )); }
-        return(value);
-      }
-
-      if (noiseType == NOISE_TYPE_PIXEL_RANDOM)
-      {
-        return(NN.Internal.getRandom(0.0,1.0));
-      }
-
-      return(1-value); // flip pixel
-    }
-
-    if (noiseCount == null) { noiseCount = 0; }
-
-    var R = L.slice();
-
-    for (var i = 0; i < noiseCount; i++)
-    {
-      var noiseIndex = NN.Internal.getRandomInt(R.length);
-      R[noiseIndex] = makeNoise(R[noiseIndex]);
-    }
-
-    return(R);
-  }
-
-  function getShiftedImg(L, sx, sy)
-  {
-    if (sx == null) { sx = 0; }
-    if (sy == null) { sy = 0; }
-
-    var R = [];
-    for (var y = 0; y < SAMPLE_OCR_SY; y++)
-    {
-      for (var x = 0; x < SAMPLE_OCR_SX; x++)
-      {
-        var ox = (x + -sx); ox = (ox < 0) ? SAMPLE_OCR_SX+ox : ox; ox %= SAMPLE_OCR_SX;
-        var oy = (y + -sy); oy = (oy < 0) ? SAMPLE_OCR_SY+oy : oy; oy %= SAMPLE_OCR_SY;
-        R.push(L[oy*SAMPLE_OCR_SX+ox]);
-      }
-    }
-
-    return(R);
   }
 
   function getR1Array(index, total, SET, NOTSET)
