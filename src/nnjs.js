@@ -7,11 +7,12 @@
 
 // Exports: NN namespace
 
-var NN = new function() { var NCore = this;
+var NN = new function() { var NN = this;
 
 // Public constants / params
 
-NCore.DIV_IN_TRAIN = false; 
+// Use "/" instead of * during train. Used in unit tests only, should be false on production
+NN.DIV_IN_TRAIN = false; 
 
 // Tools
 
@@ -31,6 +32,7 @@ function getRandomInt (from, limit)
   return Math.floor((PRNG.nextFloat() * (limit - from)) + from) % limit;
 }
 
+function assert(condition) { if (!condition) { throw 'Assert failed'; } }
 // Activation functions
 
 function S(x)
@@ -47,10 +49,12 @@ function SD(x)
 // Neuron types
 
 // Neuron have to have following functions:
-// // Proc                                                        Input             Normal             Bias  
+// // Base                                                        Input             Normal             Bias  
 // .get()                        - to provide its current result  value of .set     result of .proc    1.0
 // .proc()                       - to proccess data on its input  [ignored]         do proc inp links  [ignored]
+// // Input
 // .set(inp)                     - to assing input value          assing inp value  [N/A]              [N/A]
+// // Proc
 // .inputs[] (used for train)    - current input Neurons links    [N/A]             [input link count] [] // empty
 // .w[]      (used for train)    - current input Neurons weights  [N/A]             [input link count] [] // empty
 // // Construction
@@ -62,6 +66,9 @@ function SD(x)
 // .initNewWeights()             - init new  weights (.nw) array  [N/A]             copy .w to .nw     [ignored]
 // .addNewWeightsDelta(DW)       - adds DW to new  weights (.nw)  [N/A]             add dw to .nw      [ignored]
 // .applyNewWeights()            - adds DW to new  weights (.nw)  [N/A]             copy .nw to .w     [ignored]
+
+// InputNeuron
+// Always return set value as its output
 
 function InputNeuron()
 {
@@ -87,6 +94,9 @@ function getRandomInitWeight()
   return(getRandom(-1, 1));
 }
 
+// Proc Neuron
+// Neuron that proccess its input inside proc method
+
 function ProcNeuron()
 {
   var that = this;
@@ -103,7 +113,11 @@ function ProcNeuron()
   {
     var out = 0;
 
-    for (var i = 0; i < that.w.length; i++)
+    var count = that.w.length;
+
+    assert(ins.length == count);
+
+    for (var i = 0; i < count; i++)
     {
       out += ins[i] * that.w[i];
     }
@@ -133,11 +147,17 @@ function ProcNeuron()
     }
   }
 
+  // Core proccsing
+  // Computes output based on input
+
   that.proc = function()
   {
+    assert(that.inputs.length == that.w.length);
+
     var ins = [];
 
-    for (var i = 0; i < that.w.length; i++)
+    var count = that.inputs.length;
+    for (var i = 0; i < count; i++)
     {
       ins.push(that.inputs[i].get());
     }
@@ -171,11 +191,16 @@ function ProcNeuron()
     }
   }
 
+  // Replace current weights with new weights
+
   that.applyNewWeights = function()
   {
     that.w = that.nw.slice();
   }
 }
+
+// BiasNeuron
+// Always return 1.0 as its output
 
 function BiasNeuron()
 {
@@ -235,6 +260,11 @@ function BiasNeuron()
   }
 }
 
+/// Layer
+/// Represent a layer of network
+/// This class composes neuron network layer and acts as container for neurons
+/// Layer Container "owns" Neuron(s)
+
 function Layer(N, maker)
 {
   var that = this;
@@ -273,23 +303,49 @@ function Layer(N, maker)
 
 function doProcNet(layers)
 {
+  // potential optimization:
+  // we may start from layer 1 (not 0) to skip input layer [on input/bias neurons proc func is empty]
+  // but we will start from 0 because we want support "subnet" case here in future
   // start from 1 to skip input layer
-  for (var i = 1; i < layers.length; i++)
+  var layersCount = layers.length;
+  for (var i = 1; i < layersCount; i++)
   {
-    for (var ii = 0; ii < layers[i].neurons.length; ii++)
+    var neuronsCount = layers[i].neurons.length;
+    for (var ii = 0; ii < neuronsCount; ii++)
     {
       layers[i].neurons[ii].proc();
     }
   }
 }
 
-function doProc(NET, inputs)
+/// Network
+/// This class composes multiple neuron network layers and acts as container for layers
+/// Network Container "owns" Layer(s)
+
+// class Network // In JS NET just an array of layers (so far)
+
+// Assign inputs
+// The inputs assigned to first layer of the network
+// inputs should be same saze as first (input) layer
+
+function doProcAssignInput(NET, inputs)
 {
+  if ((NET.length <= 0) && (inputs.length <= 0))
+  {
+    return; // strange, but assume OK
+  }
+
+  assert(NET.length > 0);
+
   var LIN = NET[0];
+
+  // assert(LIN->neurons.length == inputs.length); // input layer may have bias neuron(s)
 
   for (var i = 0; i < LIN.neurons.length; i++)
   {
-    if (LIN.neurons[i].set == null)
+    var input = LIN.neurons[i];
+    
+    if ((input == null) || (input.set == null))
     {
       // Bias Neuron (skip)
     }
@@ -297,18 +353,29 @@ function doProc(NET, inputs)
     {
       if (i < inputs.length)
       {
-        LIN.neurons[i].set(inputs[i]);
+        input.set(inputs[i]);
       }
       else
       {
-        LIN.neurons[i].set(0);
+        input.set(0);
       }
     }
   }
+}
 
-  doProcNet(NET);
+// Get network output result
+// resturns array of network's output
 
+function doProcGetResult(NET)
+{
   var result = [];
+
+  if (NET.length <= 0)
+  {
+    return result; // strange, but assume empty response
+  }
+
+  assert(NET.length > 0);
 
   var LOUT   = NET[NET.length-1];
 
@@ -320,25 +387,36 @@ function doProc(NET, inputs)
   return(result);
 }
 
+function doProc(NET, inputs)
+{
+  doProcAssignInput(NET, inputs);
+
+  doProcNet(NET);
+
+  return doProcGetResult(NET);
+}
+
 // Training functions
 
 function getDeltaOutputSum(outNeuron, OSME) // OSME = output sum margin of error (AKA Expected - Calculated)
 {
+  if ((outNeuron == null) || (outNeuron.getSum == null)) { return NaN; }
   var OS = outNeuron.getSum();
-  var DOS = SD(OS) * OSME; // FIX: DOS is local
+  var DOS = SD(OS) * OSME;
   return(DOS);
 }
 
 function getDeltaWeights(theNeuron, DOS) // theNeuron in question, DOS = delta output sum
 {
-  var inputs = theNeuron.inputs;
+  if ((theNeuron == null) || (theNeuron.inputs == null)) { return []; } // Empty
 
+  var count = theNeuron.inputs.length;
   var DWS = [];
 
   var dw;
-  for (var i = 0; i < inputs.length; i++)
+  for (var i = 0; i < count; i++)
   {
-    if (NCore.DIV_IN_TRAIN) { dw = DOS / inputs[i].get(); } else { dw = DOS * inputs[i].get(); }
+    if (NN.DIV_IN_TRAIN) { dw = DOS / theNeuron.inputs[i].get(); } else { dw = DOS * theNeuron.inputs[i].get(); }
     DWS.push(dw);
   }
 
@@ -347,21 +425,71 @@ function getDeltaWeights(theNeuron, DOS) // theNeuron in question, DOS = delta o
 
 function getDeltaHiddenSums(theNeuron, DOS)
 {
-  var inputs = theNeuron.inputs;
+  if ((theNeuron == null) || (theNeuron.inputs == null)) { return []; } // Empty
 
+  var count = theNeuron.inputs.length;
   var DHS = [];
 
   var ds;
-  for (var i = 0; i < inputs.length; i++)
+  for (var i = 0; i < count; i++)
   {
-    if (NCore.DIV_IN_TRAIN) { ds = DOS / theNeuron.w[i] * SD(inputs[i].getSum()); } else { ds = DOS * theNeuron.w[i] * SD(inputs[i].getSum()); }
+    var input = theNeuron.inputs[i];
+    if ((input == null) || (input.getSum == null))
+    {
+      ds = NaN; // This neuron input is non-trainee neuron, ds is N/A since we do not know its getSum()
+    }
+    else // looks like SD here is SD for input neuron (?) use input->SD(input->getSum()) later
+    {
+      if (NN.DIV_IN_TRAIN) { ds = DOS / theNeuron.w[i] * SD(input.getSum()); } else { ds = DOS * theNeuron.w[i] * SD(input.getSum()); }
+    }
+
     DHS.push(ds);
   }
 
   return(DHS);
 }
 
-// Train function
+// Train functions
+// -----------------------------------------------
+// Do network train
+
+function doTrainStepProcPrevLayer(LOUT, DOS, layerIndex)
+{
+  // Addjust previous layer(s)
+  // LOUT[neurons count] = current level (its new weights already corrected)
+  // DOS[neurons count]  = delta output sum for each neuron on in current level
+  // layerIndex = current later index, where 0 = input layer
+
+  assert(LOUT.length == DOS.length);
+  if (layerIndex <= 1)
+  {
+    return; // previous layer is an input layer, so skip any action
+  }
+
+  for (var i = 0; i < LOUT.length; i++)
+  {
+    var neuron = LOUT[i];
+
+    if ((neuron == null) || (neuron.inputs == null)) { break; } // Non-trainable neuron
+
+    var LP = neuron.inputs;
+    var DOHS = getDeltaHiddenSums(neuron, DOS[i]);
+
+    assert(LP.length == DOHS.length);
+
+    for (var ii = 0; ii < LP.length; ii++)
+    {
+      var input = LP[ii];
+      if ((input != null) && (input.getSum != null))
+      {
+        var DW = getDeltaWeights(input, DOHS[ii]);
+        input.addNewWeightsDelta(DW);
+      }
+    }
+
+    doTrainStepProcPrevLayer(LP, DOHS, layerIndex-1);
+  }
+}
 
 function doTrainStep(NET, DATA, TARG, SPEED)
 {
@@ -369,15 +497,20 @@ function doTrainStep(NET, DATA, TARG, SPEED)
   // CALC=calculated output (will be calculated)
   // Note: we re-run calculation here both to receive CALC AND update "sum" state of each neuron in NET
 
-  if (SPEED == null) { SPEED = 1.0; }
+  if ((SPEED == null) || (isNaN(SPEED)) || (SPEED <= 0.0)) { SPEED = 0.1; } // 1.0 is max
 
   var CALC = doProc(NET, DATA); // we need this because sum has to be updated in NET for each neuron for THIS test case
 
   for (var i = 1; i < NET.length; i++) // skip input layer
   {
-    for (var ii = 0; ii < NET[i].neurons.length; ii++)
+    var iicount = NET[i].neurons.length;
+    for (var ii = 0; ii < iicount; ii++)
     {
-      NET[i].neurons[ii].initNewWeights(); // prepare
+      var neuron = NET[i].neurons[ii];
+      if ((neuron != null) && (neuron.initNewWeights != null))
+      {
+        neuron.initNewWeights(); // prepare
+      }
     }
   }
 
@@ -389,179 +522,226 @@ function doTrainStep(NET, DATA, TARG, SPEED)
   var DOS  = []; // delta output sum for each output neuron
   var DOIW = []; // delta output neuron input weights each output neuron
 
+  // proc output layer
+
   for (var i = 0; i < LOUT.length; i++)
   {
+    var neuron = LOUT[i];
     OSME.push((TARG[i] - CALC[i]) * SPEED);
-    DOS.push(getDeltaOutputSum(LOUT[i], OSME[i]));
-    DOIW.push(getDeltaWeights(LOUT[i], DOS[i]));
-    LOUT[i].addNewWeightsDelta(DOIW[i]);
+    DOS.push(getDeltaOutputSum(neuron, OSME[i])); // will handle neuron=NULL case
+    DOIW.push(getDeltaWeights(neuron, DOS[i])); // will handle neuron=NULL case
+    if ((neuron != null) && (neuron.addNewWeightsDelta != null))
+    {
+      neuron.addNewWeightsDelta(DOIW[i]);
+    }
   }
 
   // proc prev layers
+  // will apply training back recursively
+  // recursion controlled by laterIndex
 
-  function procPrevLayer(LOUT, DOS, layerIndex)
-  {
-    // Addjust previous layer(s)
-    // LOUT[neurons count] = current level (its new weights already corrected)
-    // DOS[neurons count]  = delta output sum for each neuron on in current level
-    // layerIndex = current later index, where 0 = input layer
-
-    if (layerIndex <= 1)
-    {
-      return; // previous layer is an input layer, so skip any action
-    }
-
-    for (var i = 0; i < LOUT.length; i++)
-    {
-      var LP = LOUT[i].inputs;
-      var DOHS = getDeltaHiddenSums(LOUT[i], DOS[i]);
-
-      for (var ii = 0; ii < LP.length; ii++)
-      {
-        var DW = getDeltaWeights(LP[ii], DOHS[ii]);
-        LP[ii].addNewWeightsDelta(DW);
-      }
-
-      procPrevLayer(LP, DOHS, layerIndex-1);
-    }
-  }
-
-  procPrevLayer(LOUT, DOS, NET.length-1);
+  doTrainStepProcPrevLayer(LOUT, DOS, NET.length-1);
 
   for (var i = 1; i < NET.length; i++) // skip input layer
   {
-    for (var ii = 0; ii < NET[i].neurons.length; ii++)
+    var iicount = NET[i].neurons.length;
+    for (var ii = 0; ii < iicount; ii++)
     {
-      NET[i].neurons[ii].applyNewWeights(); // adjust
-    }
-  }
-}
-
-function isTrainDoneDefaultFunc(DATAS, TARGS, CALCS, eps)
-{
-  if (eps == null) { eps = 0.1; } // > 0.0 and < 0.5
-
-  function isResultItemMatch(t,c)
-  {
-    if (Math.abs(t-c) < eps) { return(true); }
-    return(false);
-  }
-
-  isOK = true;
-
-  for (var s = 0; s < TARGS.length; s++)
-  {
-    for (var ii = 0; ii < TARGS[s].length; ii++)
-    {
-      if (!isResultItemMatch(TARGS[s][ii], CALCS[s][ii]))
+      var neuron = NET[i].neurons[ii];
+      if ((neuron != null) && (neuron.applyNewWeights != null))
       {
-        isOK = false;
+        neuron.applyNewWeights(); // adjust
       }
     }
   }
-
-  return(isOK);
 }
 
-// Training progress reporter
+/// Class checker for training is done
 
-function TrainProgress()
+function TrainingDoneChecker()
 {
-  var that = this;
+  var that = this || {};
+  var self = TrainingDoneChecker;
+
+  /// Function checks if training is done
+  /// DATAS is a list of source data sets
+  /// TARGS is a list of target data sets
+  /// CALCS is a list of result data sets
+  function isTrainingDone(DATAS, TARGS, CALCS)
+  {
+    throw 'TrainingDoneChecker::isTrainingDone is abstract';
+  }
+  that.isTrainingDone = isTrainingDone;
+
+  return that;
+}
+
+
+var DEFAULT_EPS = 0.1;
+
+function TrainingDoneCheckerEps(eps)
+{
+  var that = this || {};
+  var self = TrainingDoneCheckerEps;
+  var base = TrainingDoneChecker;
+
+  // Constructor
+
+  base.call(this);
+
+  if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
+
+  // simple single vectors match
+
+  function isResultSampleMatch(TARG, CALC, eps)
+  {
+    if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
+
+    function isResultItemMatch(t,c)
+    {
+      if (Math.abs(t-c) < eps) { return(true); }
+      return(false);
+    }
+
+    assert(TARG.length == CALC.length);
+
+    for (var ii = 0; ii < TARG.length; ii++)
+    {
+      if (!isResultItemMatch(TARG[ii], CALC[ii]))
+      {
+        return(false);
+      }
+    }
+
+    return(true);
+  }
+  self.isResultSampleMatch = isResultSampleMatch;
+
+  function getResultSampleVarianceSum(TARG, CALC)
+  {
+    assert(TARG.length == CALC.length);
+
+    var result = 0;
+
+    for (var ii = 0; ii < TARG.length; ii++)
+    {
+      var diff = TARG[ii] - CALC[ii];
+
+      result += diff * diff;
+    }
+
+    return(result);
+  }
+
+  function getResultSetVarianceSum(TARGS, CALCS)
+  {
+    assert(TARGS.length == CALCS.length);
+
+    var result = 0;
+
+    for (var s = 0; s < TARGS.length; s++)
+    {
+      result += getResultSampleVarianceSum(TARGS[s], CALCS[s]);
+    }
+
+    return(result);
+  }
+
+  function getResultSetVariance(TARGS, CALCS)
+  {
+    var result = getResultSetVarianceSum(TARGS, CALCS);
+    var count = TARGS.length;
+    if (count > 0) { count *= TARGS[0].length; }
+    if (count <= 0) { return NaN; }
+    return(result / count);
+  }
+  self.getResultSetVariance = getResultSetVariance;
+
+  function isTrainingDoneSimple(TARGS, CALCS, eps)
+  {
+    assert(TARGS.length == CALCS.length);
+
+    for (var s = 0; s < TARGS.length; s++)
+    {
+      if (!isResultSampleMatch(TARGS[s], CALCS[s], eps))
+      {
+        return(false);
+      }
+    }
+
+    return(true);
+  }
+
+  function isTrainingDone(DATAS, TARGS, CALCS)
+  {
+    assert(DATAS.length == TARGS.length);
+    assert(TARGS.length == CALCS.length);
+    return(isTrainingDoneSimple(TARGS, CALCS, eps));
+  }
+  that.isTrainingDone = isTrainingDone;
+  
+  return that;
+}
+
+/// Training progress reporter
+/// Will be called during traing to report progress
+/// May rise traing abort event
+
+function TrainingProgressReporter()
+{
+  var that = this || {};
+  var self = TrainingProgressReporter;
+  
+  // TrainingArgs parameter
+
+  function TrainingArgs(NET, DATAS, TARGS, SPEED, maxStepsCount) // args param to events
+  {
+    this.NET   = NET;
+    this.DATAS = DATAS;
+    this.TARGS = TARGS;
+    this.SPEED = SPEED;
+
+    this.maxStepsCount = maxStepsCount;
+  }
+  self.TrainingArgs = TrainingArgs;
+
+  // TrainingStep parameter
+  // for onTrainingStep
+
+  function TrainingStep(CALCS, stepIndex) // args param to step
+  {
+    this.CALCS = CALCS;
+    this.stepIndex = stepIndex;
+  }
+  self.TrainingStep = TrainingStep;
+
+  // Report methods
 
   that.onTrainingBegin = function(args) { };
   that.onTrainingStep  = function(args, i, maxCount) { return true; }; // return false to abort training
   that.onTrainingEnd   = function(args, isOk) { };
+  
+  return that;
 };
 
-TrainProgress.TrainingArgs = function(NET, DATAS, TARGS, SPEED, maxStepsCount) // args param to events
-{
-  this.NET   = NET;
-  this.DATAS = DATAS;
-  this.TARGS = TARGS;
-  this.SPEED = SPEED;
-
-  this.maxStepsCount = maxStepsCount;
-};
-
-TrainProgress.TrainingStep = function(CALCS, stepIndex) // args param to step
-{
-  this.CALCS = CALCS;
-  this.stepIndex = stepIndex;
-};
-
-function ConsoleTrainProgress(reportInterval)
-{
-  var that = this;
-
-  var DEFAULT_REPORT_INTERVAL = 100;
-
-  if (reportInterval == null)
-  {
-    reportInterval = DEFAULT_REPORT_INTERVAL;
-  }
-  else if (reportInterval < 0)
-  {
-    reportInterval = 0;
-  }
-
-  TrainProgress.call(this);
-
-  that.onTrainingBegin = function(args) { console.log("TRAINING Started", args.SPEED); };
-
-  var lastSeenIndex = 0;
-
-  that.onTrainingStep  = function(args, step)
-  { 
-    lastSeenIndex = step.stepIndex;
-
-    var n     = step.stepIndex + 1;
-    var MAX_N = args.maxStepsCount;
-    var DATAS = args.DATAS;
-    var TARGS = args.TARGS;
-    var CALCS = step.CALCS;
-
-    if ((reportInterval > 0) && ((n % reportInterval) == 0))
-    {
-      for (var s = 0; s < DATAS.length; s++)
-      {
-        console.log("TRAINING Result.N[n,s]", MAX_N, n, s, DATAS[s], TARGS[s], CALCS[s]);
-      }
-    }
-
-    return true; 
-  };
-
-  that.onTrainingEnd   = function(args, isOk)
-  {
-    var n = lastSeenIndex + 1;
-    var NET = args.NET;
-    if (isOk)
-    {
-      console.log("TRAINING OK", "iterations:"+n, NET);
-    }
-    else
-    {
-      console.log("TRAINING FAILED", "timeout:"+n, NET);
-    }
-  };
-}
+// Main training function
 
 var DEFAULT_TRAIN_COUNT    = 50000;
 var DEFAULT_TRAINING_SPEED = 0.125;
 
 /// Train the neural network
-function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainDoneFunc)
+function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainingDoneChecker)
 {
-  if (MAX_N == null)       { MAX_N = DEFAULT_TRAIN_COUNT; }
-  if (SPEED == null)       { SPEED = DEFAULT_TRAINING_SPEED; }
+  if ((MAX_N == null) || (MAX_N < 0)) { MAX_N = DEFAULT_TRAIN_COUNT; }
+  if ((SPEED == null) || (SPEED < 0)) { SPEED = DEFAULT_TRAINING_SPEED; }
 
-  if (isTrainDoneFunc == null) { isTrainDoneFunc = isTrainDoneDefaultFunc; }
+  if (isTrainingDoneChecker == null) { isTrainingDoneChecker = new TrainingDoneCheckerEps(); }
 
-  var trainArgs = new TrainProgress.TrainingArgs(NET, DATAS, TARGS, SPEED, MAX_N);
+  var trainArgs = new TrainingProgressReporter.TrainingArgs(NET, DATAS, TARGS, SPEED, MAX_N);
 
   if (progressReporter != null) { progressReporter.onTrainingBegin(trainArgs); }
 
+  // steps
   var isDone = false;
   for (var n = 0; (n < MAX_N) && (!isDone); n++)
   {
@@ -573,7 +753,7 @@ function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainDoneF
 
     if (progressReporter != null)
     { 
-      var trainStep = new TrainProgress.TrainingStep(CALCS, n);
+      var trainStep = new TrainingProgressReporter.TrainingStep(CALCS, n);
       if (progressReporter.onTrainingStep(trainArgs, trainStep) === false)
       {
         // Abort training
@@ -582,7 +762,7 @@ function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainDoneF
       }
     }
 
-    isDone = isTrainDoneFunc(DATAS, TARGS, CALCS);
+    isDone = isTrainingDoneChecker.isTrainingDone(DATAS, TARGS, CALCS);
 
     if (!isDone)
     {
@@ -601,33 +781,43 @@ function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainDoneF
   return(isDone);
 }
 
-// Some internals
-
-NCore.Internal = {};
-NCore.Internal.PRNG = PRNG;
-NCore.Internal.getRandom = getRandom;
-NCore.Internal.getRandomInt = getRandomInt;
-NCore.Internal.getDeltaOutputSum  = getDeltaOutputSum;
-NCore.Internal.getDeltaWeights    = getDeltaWeights;
-NCore.Internal.getDeltaHiddenSums = getDeltaHiddenSums;
-
 // Exports
 
-NCore.ProcNeuron = ProcNeuron;
-NCore.InputNeuron = InputNeuron;
-NCore.BiasNeuron = BiasNeuron;
+// Some internals
 
-NCore.Layer   = Layer;
+NN.Internal = {};
+NN.Internal.PRNG = PRNG;
+NN.Internal.getRandom = getRandom;
+NN.Internal.getRandomInt = getRandomInt;
+NN.Internal.getDeltaOutputSum  = getDeltaOutputSum;
+NN.Internal.getDeltaWeights    = getDeltaWeights;
+NN.Internal.getDeltaHiddenSums = getDeltaHiddenSums;
 
-NCore.doProc  = doProc;
+// Core
 
-NCore.TrainProgress = TrainProgress;
-NCore.ConsoleTrainProgress = ConsoleTrainProgress;
-NCore.doTrain = doTrain;
+NN.ProcNeuron  = ProcNeuron;
+NN.InputNeuron = InputNeuron;
+NN.BiasNeuron  = BiasNeuron;
+
+NN.Layer       = Layer;
+
+NN.doProc      = doProc;
+
+NN.TrainingDoneChecker = TrainingDoneChecker;
+NN.TrainingDoneCheckerEps = TrainingDoneCheckerEps;
+NN.TrainingProgressReporter = TrainingProgressReporter;
+NN.doTrain = doTrain;
 
 // Aux
 
-NCore.isResultMatchSimpleFunc = function(TARG, CALC, eps) { return(isTrainDoneDefaultFunc(null, [ TARG ], [ CALC ], eps)); }
-NCore.isResultBatchMatchSimpleFunc = function(TARGS, CALCS, eps) { return(isTrainDoneDefaultFunc(null, TARGS, CALCS, eps)); }
+NN.isResultSampleMatchSimpleFunc = function(TARG, CALC, eps)
+{
+  return TrainingDoneCheckerEps.isResultSampleMatch(TARG, CALC, eps);
+}
+
+NN.isResultBatchMatchSimpleFunc = function (TARGS, CALCS, eps)
+{
+  return TrainingDoneCheckerEps.isTrainingDoneSimple(TARGS, CALCS, eps);
+}
 
 }()

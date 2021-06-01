@@ -18,7 +18,8 @@ function isFloatAlmostEqual(a,b,eps)
 function isFloatListAlmostEqual(a,b,eps)
 {
   if (a.length != b.length) { return false; }
-  for (var i = 0; i < a.length; i++)
+  var count = a.length;
+  for (var i = 0; i < count; i++)
   {
     if (!isFloatAlmostEqual(a[i],b[i],eps)) { return false; }
   }
@@ -261,7 +262,7 @@ function getTestRNGCountSeed()
 
 function doUnitTestRNG3()
 {
-  var NAME = "RNG3:";
+  var NAME = STR("RNG3:");
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -280,7 +281,7 @@ function doUnitTestRNG3()
 
 function doUnitTestRNG4()
 {
-  var NAME = "RNG4:";
+  var NAME = STR("RNG4:");
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -302,7 +303,7 @@ function doUnitTestRNG4()
 
 function doUnitTestRNG5()
 {
-  var NAME = "RNG5:";
+  var NAME = STR("RNG5:");
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;
@@ -322,7 +323,7 @@ function doUnitTestRNG5()
 
 function doUnitTestRNG6()
 {
-  var NAME = "RNG6:";
+  var NAME = STR("RNG6:");
   var isOk = true;
   var TRNG = new Random(getTestRNGCountSeed());
   var r;

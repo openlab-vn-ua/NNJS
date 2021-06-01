@@ -3,6 +3,10 @@
 // [OCR demo network]
 
 // Require nnjs.js
+// Require nnjs.console.training.stat.js
+
+// Ocr sample
+// ----------------------------------------------------
 
 var SAMPLE_OCR_SX = 9;
 var SAMPLE_OCR_SY = 8;
@@ -179,7 +183,7 @@ function getNoisedInput(L, noiseCount, noiseType)
 
   if (noiseCount == null) { noiseCount = 0; }
 
-  var R = L.slice();
+  var R = L.slice(); // copy
 
   for (var i = 0; i < noiseCount; i++)
   {
@@ -211,6 +215,8 @@ function getShiftedImg(L, sx, sy)
 
 function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
 {
+  var USE_ASCII = false; // #define
+
   if (addTopSep == null)    { addTopSep = true; }
   if (addLeftSep == null)   { addLeftSep = true; }
   if (addBottomSep == null) { addBottomSep = false; }
@@ -227,7 +233,9 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
   // !<text Y[SAMPLE_OCR_SY-1]>
   // !00000000000! bottom Sep
 
-  var ty = 0;
+  var ty;
+  
+  ty = 0;
   if (addTopSep) { T.push(inText(ty++)); }
   for (var y = 0; y < SAMPLE_OCR_SY; y++)
   {
@@ -245,7 +253,7 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
 
   var SEP = t; // sep line
 
-  var ty = 0;
+  ty = 0;
   if (addTopSep) { T[ty++] += SEP; }
   for (var y = 0; y < SAMPLE_OCR_SY; y++)
   {
@@ -262,13 +270,22 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
       }
       else if (v >= 1)
       {
-        c = "\u2588"; // "█"; // "*";
+        if (USE_ASCII) {
+          c = "*"; // "*";
+        } else {
+          c = "\u2588"; // "█";
+        }
       }
       else
       {
         // v = Math.floor(v * 10); c = v.toString()[0];
         v = Math.floor(v * 10);
-        var F = [ "\u2591", "\u2591", "\u2591", "\u2592", "\u2592", "\u2592", "\u2593", "\u2593", "\u2593", "\u2593" ]; // "░░░▒▒▒▒▓▓▓"; // "0123456789";
+        var F;
+        if (USE_ASCII) {
+          F=["0",      "1",      "2",      "3",      "4",      "5",      "6",      "7",      "8",      "9"     ]; // "0123456789";
+        } else {
+          F=["\u2591", "\u2591", "\u2591", "\u2592", "\u2592", "\u2592", "\u2593", "\u2593", "\u2593", "\u2593"]; // "░░░▒▒▒▒▓▓▓";
+        }
         c = F[v];
       }
 
@@ -279,17 +296,32 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
   }
   if (addBottomSep) { T[ty++] += SEP; }
 
+  //USE_ASCII = null; // #undef
   return(T);
 }
 
 function sampleOcrNetwork()
 {
-  var SAMPLES = sampleOcrGetSamples();
+  if (true)
+  {
+    var seed = new Date().getTime() % 0x7FFF0000 + 1;
+    NN.Internal.PRNG.setSeed(seed);
+    console.log("sampleOcrNetwork", "(samples)", "seed=", seed);
+  }
+
+  var SAMPLES = sampleOcrGetSamples(); // [letter][sample] = data[]
 
   // The Net
 
   var LAYERS = 3;
   var NET;
+
+  if (true)
+  {
+    var seed = new Date().getTime() % 0x7FFF0000 + 1;
+    NN.Internal.PRNG.setSeed(seed);
+    console.log("sampleOcrNetwork", "(net)", "seed=", seed, "layers=", LAYERS);
+  }
 
   if (LAYERS == 3)
   {
@@ -325,8 +357,8 @@ function sampleOcrNetwork()
 
   // Prepare DATAS and TARGS as source and expected results to train
 
-  var INPSS = SAMPLES; // 2D array [letter][sample] = data
-  var OUTRS = [ ]; // 1D array [letter] = result expected
+  var INPSS = SAMPLES; // 2D array [letter][sample] = data[]
+  var OUTRS = [ ]; // 1D array [letter] = result[] expected
 
   for (var dataIndex = 0; dataIndex < INPSS.length; dataIndex++)
   {
@@ -334,11 +366,11 @@ function sampleOcrNetwork()
     OUTRS.push(OUTR);
   }
 
-  //var DATASE = [ getLArray(LA0), getLArray(LB0), getLArray(LC0), getLArray(LD0)];
-  //var TARGSE = [ getR1Out(0,4),  getR1Out(1,4),  getR1Out(2,4),  getR1Out(3,4)];
+  //var DATASE = [ getLArray(LA0), getLArray(LB0), getLArray(LC0), getLArray(LD0) ];
+  //var TARGSE = [ getR1Out(0,4),  getR1Out(1,4),  getR1Out(2,4),  getR1Out(3,4) ];
 
-  var DATASE = [ ]; // data source etalon (no noise) : source samples as plain array
-  var TARGSE = [ ]; // data source etalon (no noise) : results expected as plain array
+  var DATASE = [ ]; // data source etalon (no noise) : source samples as plain array (inputs)
+  var TARGSE = [ ]; // data target etalon (no noise) : results expected as plain array (outputs)
 
   for (var dataIndex = 0; dataIndex < INPSS.length; dataIndex++)
   {
@@ -348,12 +380,12 @@ function sampleOcrNetwork()
     for (var ii = 0; ii < INPS.length; ii++)
     {
       DATASE.push(INPS[ii]);
-      TARGSE.push(OUTR);
+      TARGSE.push(OUTR); // for all samples of same input result should be the same
     }
   }
 
   var DATAS  = []; // work samples (may be noised)
-  var TARGS  = []; // work samples (may be noised)
+  var TARGS  = []; // work targets (for in noised)
 
   for (var dataIndex = 0; dataIndex < DATASE.length; dataIndex++)
   {
@@ -395,7 +427,7 @@ function sampleOcrNetwork()
   dumpSamples(DATAS, DATAS.length / DATASE.length);
 
   console.log("Training, please wait ...");
-  if (!NN.doTrain(NET, DATAS, TARGS, null, null, new NN.ConsoleTrainProgress(0)))
+  if (!NN.doTrain(NET, DATAS, TARGS, -1, -1, new NN.TrainingProgressReporterConsole(10)))
   {
     console.log("Training failed!", NET);
     return(false);
@@ -408,9 +440,12 @@ function sampleOcrNetwork()
   function getMaximumIndex(R, minDiff)
   {
     // input:  R as vector of floats (usualy 0.0 .. 1.0)
-    // result: index of maximum value, checking that next maximum is at least eps lower. returns null if no such value found (maximums too close)
+    // result: index of maximum value, checking that next maximum is at least eps lower.
+    // returns -1 if no such value found (maximums too close)
 
-    if (R.length <= 0) { return(null); }
+    var FAIL = -1;
+
+    if (R.length <= 0) { return(FAIL); }
 
     var currMaxIndex = 0;
     for (var i = 1; i < R.length; i++)
@@ -420,12 +455,12 @@ function sampleOcrNetwork()
 
     if (R[currMaxIndex] < minDiff)
     {
-      return(null); // not ever greater than 0, no reason so check another max
+      return(FAIL); // not ever greater than 0, no reason so check another max
     }
 
     if (R.length <= 1) { return(currMaxIndex); } // actually, 0
 
-    var nextMaxIndex = (currMaxIndex+1) % R.length; // actually, any other value
+    var nextMaxIndex = (currMaxIndex + 1) % R.length; // actually, any other value
 
     for (var i = 0; i < R.length; i++)
     {
@@ -452,7 +487,7 @@ function sampleOcrNetwork()
       return(currMaxIndex);
     }
 
-    return(null);
+    return(FAIL);
   }
 
   function verifyProc(NET, DATAS, TARGS, stepName, imagesPerSample)
@@ -476,17 +511,17 @@ function sampleOcrNetwork()
       var imageIndex = dataIndex % imagesPerSample;
       var sampleIndex = (dataIndex-imageIndex) / imagesPerSample;
 
-      var isSimpleMatchOK = NN.isResultMatchSimpleFunc(TARGS[dataIndex], CHKRS[dataIndex], veps);
+      var isSimpleMatchOK = NN.isResultSampleMatchSimpleFunc(TARGS[dataIndex], CHKRS[dataIndex], veps);
       var smartMatchSampleIndex = getMaximumIndex(CHKRS[dataIndex], vdif);
       var smartMatchExpectIndex = getMaximumIndex(TARGS[dataIndex], vdif);
 
       //if (true) // all
       //if (!isSimpleMatchOK) // warn
-      if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex)) // fail
+      if ((smartMatchSampleIndex < 0) || (smartMatchSampleIndex != smartMatchExpectIndex)) // fail
       {
         var status = "";
 
-        if ((smartMatchSampleIndex == null) || (smartMatchSampleIndex != smartMatchExpectIndex))
+        if ((smartMatchSampleIndex < 0) || (smartMatchSampleIndex != smartMatchExpectIndex))
         {
           status = "FAIL";
           statFail++;
@@ -502,7 +537,7 @@ function sampleOcrNetwork()
           statGood++;
         }
 
-        console.log("Verification step "+stepName+"["+dataIndex+"]"+":"+status+"", [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [ veps, vdif ]);
+        console.log("Verification step " + STR(stepName) + "[" + STR(dataIndex) + "]" + ":" + STR(status) + "", [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [ veps, vdif ]);
         var T = sampleAddLetTexts(DATAS[dataIndex], null, true, true, true, true);
         for (var lineIndex = 0; lineIndex < T.length; lineIndex++)
         {
@@ -518,13 +553,13 @@ function sampleOcrNetwork()
 
     if (isOK)
     {
-      console.log("Verification step " + stepName + ":OK [100%]");
+      console.log("Verification step " + STR(stepName) + ":OK [100%]");
     }
     else
     {
-      var statFull = statGood + statFail + statWarn;
-      function showPerc(val) { return val = ''+Math.round(val * 1000) / 10; }
-      console.log("Verification step " + stepName + ":Done:" + (" GOOD=" + showPerc(statGood / statFull)) + (" WARN=" + showPerc(statWarn / statFull)) + (" FAIL=" + showPerc(statFail / statFull)));
+      var statFull = 0.0 + statGood + statFail + statWarn;
+      function showPerc(val) { return STR("") + STR(Math.round(val * 1000.0) / 10.0); }
+      console.log("Verification step " + STR(stepName) + ":Done:" + (" GOOD=" + showPerc(statGood / statFull)) + (" WARN=" + showPerc(statWarn / statFull)) + (" FAIL=" + showPerc(statFail / statFull)));
     }
 
     return(isOK);
@@ -534,7 +569,9 @@ function sampleOcrNetwork()
 
   // Create noised data
 
-  var DATASN = [];
+  var DATASN;
+
+  DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],1));
@@ -542,7 +579,7 @@ function sampleOcrNetwork()
 
   verifyProc(NET, DATASN, TARGS, "Noised.F1", DATASN.length / DATASE.length);
 
-  var DATASN = [];
+  DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],30,NOISE_TYPE_PIXEL_DARKER_LIGHTER));
@@ -550,13 +587,14 @@ function sampleOcrNetwork()
 
   verifyProc(NET, DATASN, TARGS, "Noised.DL30", DATASN.length / DATASE.length);
 
-  var DATASN = [];
+  DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],10,NOISE_TYPE_PIXEL_RANDOM));
   }
 
   verifyProc(NET, DATASN, TARGS, "Noised.R10", DATASN.length / DATASE.length);
+  return(true);
 }
 
 //sampleOcrNetwork();
