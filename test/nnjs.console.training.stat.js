@@ -8,14 +8,13 @@ if (NN == null) { throw 'nnjs.js should be included first '; }
 
 // Simple console write trainging reporter
 
+var DEFAULT_REPORT_INTERVAL = 100;
+
 function TrainingProgressReporterConsole(reportInterval, reportSamples)
 {
   var that = this;
   var self = TrainingProgressReporterConsole;
   var base = NN.TrainingProgressReporter;
-
-  var DEFAULT_REPORT_INTERVAL = 100; 
-  self.DEFAULT_REPORT_INTERVAL = DEFAULT_REPORT_INTERVAL; // export
 
   // Constructor
 
@@ -49,8 +48,8 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
 
     if ((reportInterval > 0) && ((n % reportInterval) == 0))
     {
-      var variance = NN.TrainingDoneCheckerEps.getResultSetVariance(TARGS, CALCS);
-      console.log("TRAINING Varian[n,s]", MAX_N, n, variance);
+      var variance = NN.NetworkStat.getResultSetAggError(TARGS, CALCS);
+      console.log("TRAINING AggError[n,s]", MAX_N, n, variance);
       if (reportSamples)
       {
         for (var s = 0; s < DATAS.length; s++)
@@ -79,6 +78,7 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
 
   return that;
 }
+TrainingProgressReporterConsole.DEFAULT_REPORT_INTERVAL = DEFAULT_REPORT_INTERVAL; // export
 
 if (NN != null) {
 NN.TrainingProgressReporterConsole = TrainingProgressReporterConsole;

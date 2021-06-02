@@ -302,6 +302,8 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
 
 function sampleOcrNetwork()
 {
+  // The Dataset
+
   if (true)
   {
     var seed = new Date().getTime() % 0x7FFF0000 + 1;
@@ -310,6 +312,12 @@ function sampleOcrNetwork()
   }
 
   var SAMPLES = sampleOcrGetSamples(); // [letter][sample] = data[]
+  var RESULTS = []; // [letter] = R1 array
+  for (var dataIndex = 0; dataIndex < SAMPLES.length; dataIndex++)
+  {
+    var RESULT = NN.NetworkStat.getR1Array(dataIndex,SAMPLES.length); // target result for this letter
+    RESULTS.push(RESULT);
+  }
 
   // The Net
 
@@ -339,50 +347,29 @@ function sampleOcrNetwork()
     NET = [IN, L1, L2, OUT];
   }
 
-  function getR1Array(index, total, SET, NOTSET)
-  {
-    if (SET    == null) { SET    = 1; }
-    if (NOTSET == null) { NOTSET = 0; }
+  // Dataset prepration
 
-    // Retuns array with only one index of total item set to SET(=1) and all other as NOTSET(=0): 0=[1, 0, 0 ...], 1=[0, 1, 0, ...], 2=[0, 0, 1, ...]
-    var R = [];
-
-    for (var i = 0; i < total; i++)
-    {
-      R.push(i == index ? SET : NOTSET);
-    }
-
-    return(R);
-  }
+  // SAMPLES // 2D array [letter][sample] = data[]
+  // RESULTS // 1D array [letter] = result[] expected
 
   // Prepare DATAS and TARGS as source and expected results to train
 
-  var INPSS = SAMPLES; // 2D array [letter][sample] = data[]
-  var OUTRS = [ ]; // 1D array [letter] = result[] expected
-
-  for (var dataIndex = 0; dataIndex < INPSS.length; dataIndex++)
-  {
-    var OUTR = getR1Array(dataIndex,INPSS.length); // target result for this letter
-    OUTRS.push(OUTR);
-  }
-
   //var DATASE = [ getLArray(LA0), getLArray(LB0), getLArray(LC0), getLArray(LD0) ];
-  //var TARGSE = [ getR1Out(0,4),  getR1Out(1,4),  getR1Out(2,4),  getR1Out(3,4) ];
+  //var TARGSE = [ getR1Out(0,4),  getR1Out(1,4),  getR1Out(2,4),  getR1Out(3,4)  ];
 
   var DATASE = [ ]; // data source etalon (no noise) : source samples as plain array (inputs)
   var TARGSE = [ ]; // data target etalon (no noise) : results expected as plain array (outputs)
 
-  for (var dataIndex = 0; dataIndex < INPSS.length; dataIndex++)
+  for (var dataIndex = 0; dataIndex < SAMPLES.length; dataIndex++)
   {
-    var INPS = INPSS[dataIndex]; // letter samples (may be many)
-    var OUTR = OUTRS[dataIndex]; // target result for this letter
-
-    for (var ii = 0; ii < INPS.length; ii++)
+    for (var ii = 0; ii < SAMPLES[dataIndex].length; ii++)
     {
-      DATASE.push(INPS[ii]);
-      TARGSE.push(OUTR); // for all samples of same input result should be the same
+      DATASE.push(SAMPLES[dataIndex][ii]);
+      TARGSE.push(RESULTS[dataIndex]); // for all samples of same input result should be the same
     }
   }
+
+  // Augmented data (original + shifted)
 
   var DATAS  = []; // work samples (may be noised)
   var TARGS  = []; // work targets (for in noised)
@@ -405,6 +392,12 @@ function sampleOcrNetwork()
     TARGS.push(TARGSE[dataIndex]);
   }
 
+  //var DATA_AUGMENTATION_MUTIPLIER = DATAS.length / DATASE.length; // there will be 7 DATAS images per 1 source DATASE image
+
+  // Dump dataset before train
+
+  var DUMP_DATASET = false;
+
   function dumpSamples(DATAS, imagesPerSample)
   {
     var sampleCount = DATAS.length / imagesPerSample; // sumber of samples
@@ -424,7 +417,9 @@ function sampleOcrNetwork()
     }
   }
 
-  dumpSamples(DATAS, DATAS.length / DATASE.length);
+  if (DUMP_DATASET) { dumpSamples(DATAS, DATAS.length / DATASE.length); }
+
+  // Training
 
   console.log("Training, please wait ...");
   if (!NN.doTrain(NET, DATAS, TARGS, -1, -1, new NN.TrainingProgressReporterConsole(10)))
@@ -437,61 +432,10 @@ function sampleOcrNetwork()
 
   // Verification
 
-  function getMaximumIndex(R, minDiff)
-  {
-    // input:  R as vector of floats (usualy 0.0 .. 1.0)
-    // result: index of maximum value, checking that next maximum is at least eps lower.
-    // returns -1 if no such value found (maximums too close)
-
-    var FAIL = -1;
-
-    if (R.length <= 0) { return(FAIL); }
-
-    var currMaxIndex = 0;
-    for (var i = 1; i < R.length; i++)
-    {
-      if (R[i] > R[currMaxIndex]) { currMaxIndex = i; }
-    }
-
-    if (R[currMaxIndex] < minDiff)
-    {
-      return(FAIL); // not ever greater than 0, no reason so check another max
-    }
-
-    if (R.length <= 1) { return(currMaxIndex); } // actually, 0
-
-    var nextMaxIndex = (currMaxIndex + 1) % R.length; // actually, any other value
-
-    for (var i = 0; i < R.length; i++)
-    {
-      if (i == currMaxIndex)
-      {
-        // skip, this is current max
-      }
-      else if (i == nextMaxIndex)
-      {
-        // skip, this is current next max
-      }
-      else
-      {
-        if (R[i] > R[nextMaxIndex]) { nextMaxIndex = i; }
-      }
-    }
-
-    var nextMaxValue = R[nextMaxIndex];
-
-    if (nextMaxValue < 0) { nextMaxValue = 0; } // bug trap
-
-    if ((R[currMaxIndex] - nextMaxValue) >= minDiff)
-    {
-      return(currMaxIndex);
-    }
-
-    return(FAIL);
-  }
-
   function verifyProc(NET, DATAS, TARGS, stepName, imagesPerSample)
   {
+    var DUMP_FAILED_IMAGES = false;
+
     var CHKRS = [];
     for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
     {
@@ -511,43 +455,52 @@ function sampleOcrNetwork()
       var imageIndex = dataIndex % imagesPerSample;
       var sampleIndex = (dataIndex-imageIndex) / imagesPerSample;
 
-      var isSimpleMatchOK = NN.isResultSampleMatchSimpleFunc(TARGS[dataIndex], CHKRS[dataIndex], veps);
-      var smartMatchSampleIndex = getMaximumIndex(CHKRS[dataIndex], vdif);
-      var smartMatchExpectIndex = getMaximumIndex(TARGS[dataIndex], vdif);
+      var isSimpleMatchOK = NN.NetworkStat.isResultSampleMatchEps(TARGS[dataIndex], CHKRS[dataIndex], veps);
 
-      //if (true) // all
-      //if (!isSimpleMatchOK) // warn
-      if ((smartMatchSampleIndex < 0) || (smartMatchSampleIndex != smartMatchExpectIndex)) // fail
+      var status = "";
+
+      if (isSimpleMatchOK)
       {
-        var status = "";
-
-        if ((smartMatchSampleIndex < 0) || (smartMatchSampleIndex != smartMatchExpectIndex))
-        {
-          status = "FAIL";
-          statFail++;
-        }
-        else if (!isSimpleMatchOK)
-        {
-          status = "WARN";
-          statWarn++;
-        }
-        else
-        {
-          status = "OK.OK.OK.OK.OK.OK.OK.OK";
-          statGood++;
-        }
-
-        console.log("Verification step " + STR(stepName) + "[" + STR(dataIndex) + "]" + ":" + STR(status) + "", [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [ veps, vdif ]);
-        var T = sampleAddLetTexts(DATAS[dataIndex], null, true, true, true, true);
-        for (var lineIndex = 0; lineIndex < T.length; lineIndex++)
-        {
-          console.log(T[lineIndex], lineIndex, sampleIndex, imageIndex);
-        }
-        isOK = false;
+        //status = "OK.OK.OK.OK.OK.OK.OK.OK"; // uncomment to dump all
+        statGood++;
       }
       else
       {
-        statGood++;
+        var smartMatchSampleIndex = NN.NetworkStat.getMaximumIndexEps(CHKRS[dataIndex], vdif);
+        if (smartMatchSampleIndex < 0)
+        {
+          status = "FAIL*";
+          statFail++;
+          isOK = false;
+        }
+        else
+        {
+          var smartMatchExpectIndex = NN.NetworkStat.getMaximumIndex(TARGS[dataIndex], vdif);
+          if (smartMatchSampleIndex != smartMatchExpectIndex)
+          {
+            status = "FAIL";
+            statFail++;
+            isOK = false;
+          }
+          else // match, but not simple match
+          {
+            status = "WARN";
+            statWarn++;
+          }
+        }
+      }
+
+      if ((status != null) && (status != ""))
+      {
+        console.log("Verification step " + STR(stepName) + "[" + STR(dataIndex) + "]" + ":" + STR(status) + "", [DATAS[dataIndex], TARGS[dataIndex], CHKRS[dataIndex]], smartMatchSampleIndex, [veps, vdif]);
+        if (DUMP_FAILED_IMAGES)
+        {
+          var T = sampleAddLetTexts(DATAS[dataIndex], null, true, true, true, true);
+          for (var lineIndex = 0; lineIndex < T.length; lineIndex++)
+          {
+            console.log(T[lineIndex], lineIndex, sampleIndex, imageIndex);
+          }
+        }
       }
     }
 
@@ -564,6 +517,8 @@ function sampleOcrNetwork()
 
     return(isOK);
   }
+
+  // Verify on source dataset (dry run)
 
   verifyProc(NET, DATAS, TARGS, "Source", DATAS.length / DATASE.length);
 

@@ -32,7 +32,10 @@ function getRandomInt (from, limit)
   return Math.floor((PRNG.nextFloat() * (limit - from)) + from) % limit;
 }
 
-function assert(condition) { if (!condition) { throw 'Assert failed'; } }
+function assert(condition) { if (!condition) { 
+  throw 'Assert failed';
+} }
+
 // Activation functions
 
 function S(x)
@@ -449,6 +452,270 @@ function getDeltaHiddenSums(theNeuron, DOS)
   return(DHS);
 }
 
+// Network Stat and Math functionality
+// -----------------------------------------------
+// Mostly used for train
+
+var DEFAULT_EPS = 0.1;
+
+var NetworkStat = new function () // static class
+{
+  var self = this;
+
+  // MatchEps
+
+  self.DEFAULT_EPS = DEFAULT_EPS;
+
+  function isResultItemMatchEps(t, c, eps) // private
+  {
+    //if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
+    if (Math.abs(t - c) < eps) { return (true); }
+    return (false);
+  }
+
+  function isResultSampleMatchEps(TARG, CALC, eps)
+  {
+    if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
+
+    var count = TARG.length;
+
+    assert(count == CALC.length);
+
+    for (var ii = 0; ii < count; ii++)
+    {
+      if (!isResultItemMatchEps(TARG[ii], CALC[ii], eps))
+      {
+        return(false);
+      }
+    }
+
+    return(true);
+  }
+  self.isResultSampleMatchEps = isResultSampleMatchEps;
+
+  // MatchArgMax
+
+  function getMaximumIndexEps(R, eps)
+  {
+    // input:  R as vector of floats (usualy 0.0 .. 1.0), eps min comparison difference
+    // result: index of maximum value, checking that next maximum is at least eps lower.
+    // returns -1 if no such value found (maximums too close)
+
+    if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
+
+    var FAIL = -1;
+
+    var RLen = R.length;
+
+    if (RLen <= 0) { return(FAIL); }
+    if (RLen <= 1) { return(0);    }
+
+    // RLen >= 2
+
+    var currMaxIndex;
+    var prevMaxIndex;
+    if (R[0] > R[1])
+    {
+      currMaxIndex = 0;
+      prevMaxIndex = 1;
+    }
+    else
+    {
+      currMaxIndex = 1;
+      prevMaxIndex = 0;
+    }
+
+    for (var i = 2; i < RLen; i++)
+    {
+      if (R[i] > R[currMaxIndex]) { prevMaxIndex = currMaxIndex; currMaxIndex = i; }
+    }
+
+    if (isNaN(eps))
+    {
+      // reserved for NAN = do not check (not used as for now)
+    }
+    else
+    {
+      if (R[currMaxIndex] < eps)
+      {
+        return(FAIL); // not ever greater than 0, no reason so check another max
+      }
+
+      if (Math.abs(R[currMaxIndex] - R[prevMaxIndex]) < eps)
+      {
+        return(FAIL); // maximums too close
+      }
+    }
+
+    return (currMaxIndex);
+  }
+  self.getMaximumIndexEps = getMaximumIndexEps;
+
+  function getMaximumIndex(R)
+  {
+    // input:  R as vector of floats (usualy 0.0 .. 1.0)
+    // result: index of maximum value
+    // returns -1 if no such value found (vector is empty)
+
+    var FAIL = -1;
+
+    var RLen = R.length;
+
+    if (RLen <= 0) { return(FAIL); }
+    if (RLen <= 1) { return(0);    }
+
+    // RLen >= 2
+
+    var currMaxIndex = 0;
+
+    for (var i = 1; i < RLen; i++)
+    {
+      if (R[i] > R[currMaxIndex]) { currMaxIndex = i; }
+    }
+
+    return (currMaxIndex);
+  }
+  self.getMaximumIndex = getMaximumIndex;
+
+  function isResultSampleMatchArgmaxEps(TARG, CALC, eps)
+  {
+    if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
+
+    var maxIndex = getMaximumIndexEps(CALC, eps);
+
+    if (maxIndex < 0) { return(false); }
+
+    var count = TARG.length;
+
+    assert(count == CALC.length);
+
+    for (var ii = 0; ii < count; ii++)
+    {
+      if ((TARG[ii] > 0.0) && (ii != maxIndex))
+      {
+        return(false);
+      }
+      else if ((TARG[ii] <= 0.0) && (ii == maxIndex))
+      {
+        return(false);
+      }
+    }
+
+    return(true);
+  }
+  self.isResultSampleMatchArgmaxEps = isResultSampleMatchArgmaxEps;
+
+  function isResultSampleMatchArgmax(TARG, CALC)
+  {
+    var maxIndex = getMaximumIndex(CALC);
+
+    if (maxIndex < 0) { return(false); }
+
+    var count = TARG.length;
+
+    assert(count == CALC.length);
+
+    for (var ii = 0; ii < count; ii++)
+    {
+      if ((TARG[ii] > 0.0) && (ii != maxIndex))
+      {
+        return(false);
+      }
+      else if ((TARG[ii] <= 0.0) && (ii == maxIndex))
+      {
+        return(false);
+      }
+    }
+
+    return(true);
+  }
+  self.isResultSampleMatchArgmax = isResultSampleMatchArgmax;
+
+  // Aggregated error
+
+  var AGG_ERROR_DIVIDED_BY = 2.0; // to be used as error function, should be mutiplied by 1/2 so derivative will not have 2x in front
+  self.AGG_ERROR_DIVIDED_BY = AGG_ERROR_DIVIDED_BY;
+
+  function getResultSampleAggErrorSum(TARG, CALC)
+  {
+    var count = TARG.length;
+
+    assert(count == CALC.length);
+
+    var result = 0;
+
+    for (var ii = 0; ii < count; ii++)
+    {
+      var diff = TARG[ii] - CALC[ii];
+
+      result += diff * diff;
+    }
+
+    return(result);
+  }
+  self.getResultSampleAggErrorSum = getResultSampleAggErrorSum;
+
+  function getResultSetAggErrorSum(TARGS, CALCS) // private
+  {
+    var count = TARGS.length;
+
+    assert(count == CALCS.length);
+
+    var result = 0;
+
+    for (var s = 0; s < count; s++)
+    {
+      result += getResultSampleAggErrorSum(TARGS[s], CALCS[s]);
+    }
+
+    return(result);
+  }
+
+  function getResultSetAggError(TARGS, CALCS)
+  {
+    var result = getResultSetAggErrorSum(TARGS, CALCS);
+    var count = TARGS.length;
+    if (count > 0) { count *= TARGS[0].length; }
+    if (count <= 0) { return NaN; }
+    return(result / count / AGG_ERROR_DIVIDED_BY);
+  }
+  self.getResultSetAggError = getResultSetAggError;
+
+  function getResultSetAggErrorByAggErrorSum(sum, sampleSize, samplesCount)
+  {
+    if (sampleSize == null) { return NaN; }
+    if (samplesCount == null) { samplesCount = 1; }
+    var count = samplesCount;
+    if (count > 0) { count *= sampleSize; }
+    if (count <= 0) { return NaN; }
+    // to be used as error function, should be mutiplied by 1/2 so derivative will not have 2x in front
+    return(sum / count / AGG_ERROR_DIVIDED_BY);
+  }
+  self.getResultSetAggErrorByAggErrorSum = getResultSetAggErrorByAggErrorSum;
+
+  // Misc
+
+  function getR1Array(index, total, SET, NOTSET)
+  {
+    // Retuns array with only one index of total item set to SET(=1) and all other as NOTSET(=0): 0=[1, 0, 0 ...], 1=[0, 1, 0, ...], 2=[0, 0, 1, ...]
+
+    if (SET    == null) { SET    = 1; }
+    if (NOTSET == null) { NOTSET = 0; }
+
+    var R = [];
+
+    for (var i = 0; i < total; i++)
+    {
+      R.push(i == index ? SET : NOTSET);
+    }
+
+    return(R);
+  }
+  self.getR1Array = getR1Array;
+
+  return self;
+}();
+
 // Train functions
 // -----------------------------------------------
 // Do network train
@@ -576,8 +843,7 @@ function TrainingDoneChecker()
   return that;
 }
 
-
-var DEFAULT_EPS = 0.1;
+// Training done checker by eps
 
 function TrainingDoneCheckerEps(eps)
 {
@@ -593,77 +859,13 @@ function TrainingDoneCheckerEps(eps)
 
   // simple single vectors match
 
-  function isResultSampleMatch(TARG, CALC, eps)
-  {
-    if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
-
-    function isResultItemMatch(t,c)
-    {
-      if (Math.abs(t-c) < eps) { return(true); }
-      return(false);
-    }
-
-    assert(TARG.length == CALC.length);
-
-    for (var ii = 0; ii < TARG.length; ii++)
-    {
-      if (!isResultItemMatch(TARG[ii], CALC[ii]))
-      {
-        return(false);
-      }
-    }
-
-    return(true);
-  }
-  self.isResultSampleMatch = isResultSampleMatch;
-
-  function getResultSampleVarianceSum(TARG, CALC)
-  {
-    assert(TARG.length == CALC.length);
-
-    var result = 0;
-
-    for (var ii = 0; ii < TARG.length; ii++)
-    {
-      var diff = TARG[ii] - CALC[ii];
-
-      result += diff * diff;
-    }
-
-    return(result);
-  }
-
-  function getResultSetVarianceSum(TARGS, CALCS)
-  {
-    assert(TARGS.length == CALCS.length);
-
-    var result = 0;
-
-    for (var s = 0; s < TARGS.length; s++)
-    {
-      result += getResultSampleVarianceSum(TARGS[s], CALCS[s]);
-    }
-
-    return(result);
-  }
-
-  function getResultSetVariance(TARGS, CALCS)
-  {
-    var result = getResultSetVarianceSum(TARGS, CALCS);
-    var count = TARGS.length;
-    if (count > 0) { count *= TARGS[0].length; }
-    if (count <= 0) { return NaN; }
-    return(result / count);
-  }
-  self.getResultSetVariance = getResultSetVariance;
-
   function isTrainingDoneSimple(TARGS, CALCS, eps)
   {
     assert(TARGS.length == CALCS.length);
 
     for (var s = 0; s < TARGS.length; s++)
     {
-      if (!isResultSampleMatch(TARGS[s], CALCS[s], eps))
+      if (!NetworkStat.isResultSampleMatchEps(TARGS[s], CALCS[s], eps))
       {
         return(false);
       }
@@ -798,26 +1000,18 @@ NN.Internal.getDeltaHiddenSums = getDeltaHiddenSums;
 NN.ProcNeuron  = ProcNeuron;
 NN.InputNeuron = InputNeuron;
 NN.BiasNeuron  = BiasNeuron;
-
 NN.Layer       = Layer;
-
 NN.doProc      = doProc;
+
+// Math
+
+NN.NetworkStat = NetworkStat;
+
+// Training
 
 NN.TrainingDoneChecker = TrainingDoneChecker;
 NN.TrainingDoneCheckerEps = TrainingDoneCheckerEps;
 NN.TrainingProgressReporter = TrainingProgressReporter;
 NN.doTrain = doTrain;
-
-// Aux
-
-NN.isResultSampleMatchSimpleFunc = function(TARG, CALC, eps)
-{
-  return TrainingDoneCheckerEps.isResultSampleMatch(TARG, CALC, eps);
-}
-
-NN.isResultBatchMatchSimpleFunc = function (TARGS, CALCS, eps)
-{
-  return TrainingDoneCheckerEps.isTrainingDoneSimple(TARGS, CALCS, eps);
-}
 
 }()
