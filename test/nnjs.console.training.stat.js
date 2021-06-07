@@ -13,7 +13,6 @@ var DEFAULT_REPORT_INTERVAL = 100;
 function TrainingProgressReporterConsole(reportInterval, reportSamples)
 {
   var that = this;
-  var self = TrainingProgressReporterConsole;
   var base = NN.TrainingProgressReporter;
 
   // Constructor

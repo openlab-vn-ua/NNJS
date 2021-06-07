@@ -828,7 +828,6 @@ function doTrainStep(NET, DATA, TARG, SPEED)
 function TrainingDoneChecker()
 {
   var that = this || {};
-  var self = TrainingDoneChecker;
 
   /// Function checks if training is done
   /// DATAS is a list of source data sets
@@ -848,7 +847,6 @@ function TrainingDoneChecker()
 function TrainingDoneCheckerEps(eps)
 {
   var that = this || {};
-  var self = TrainingDoneCheckerEps;
   var base = TrainingDoneChecker;
 
   // Constructor
@@ -892,13 +890,25 @@ function TrainingDoneCheckerEps(eps)
 function TrainingProgressReporter()
 {
   var that = this || {};
-  var self = TrainingProgressReporter;
   
+  // Report methods
+
+  that.onTrainingBegin = function(args) { };
+  that.onTrainingStep  = function(args, i, maxCount) { return true; }; // return false to abort training
+  that.onTrainingEnd   = function(args, isOk) { };
+  
+  return that;
+};
+
+(function() // Static init
+{
+  var self = TrainingProgressReporter;
+
   // TrainingArgs parameter
 
   function TrainingArgs(NET, DATAS, TARGS, SPEED, maxStepsCount) // args param to events
   {
-    this.NET   = NET;
+    this.NET = NET;
     this.DATAS = DATAS;
     this.TARGS = TARGS;
     this.SPEED = SPEED;
@@ -917,14 +927,7 @@ function TrainingProgressReporter()
   }
   self.TrainingStep = TrainingStep;
 
-  // Report methods
-
-  that.onTrainingBegin = function(args) { };
-  that.onTrainingStep  = function(args, i, maxCount) { return true; }; // return false to abort training
-  that.onTrainingEnd   = function(args, isOk) { };
-  
-  return that;
-};
+})();
 
 // Main training function
 
