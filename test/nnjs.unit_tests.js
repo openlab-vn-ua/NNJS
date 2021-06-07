@@ -173,6 +173,165 @@ function doUnitTest1()
   return isOk;
 }
 
+function doUnitTest2()
+{
+  // Test case based on
+  // https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
+  // Good example, but somehow forget to adjust the biases weights
+
+  var isOk = true;
+
+  var IN  = new NN.Layer(2, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
+
+  var L1  = new NN.Layer(2, NN.ProcNeuron); L1.addNeuron(NN.BiasNeuron);
+  //L1.addInputAll(IN);
+  L1.neurons[0].addInput(IN.neurons[0], 0.15);
+  L1.neurons[0].addInput(IN.neurons[1], 0.20);
+  L1.neurons[0].addInput(IN.neurons[2], 0.35);
+  L1.neurons[1].addInput(IN.neurons[0], 0.25);
+  L1.neurons[1].addInput(IN.neurons[1], 0.30);
+  L1.neurons[1].addInput(IN.neurons[2], 0.35);
+
+  var OUT = new NN.Layer(2, NN.ProcNeuron); 
+  //OUT.addInputAll(L1);
+  OUT.neurons[0].addInput(L1.neurons[0], 0.40);
+  OUT.neurons[0].addInput(L1.neurons[1], 0.45);
+  OUT.neurons[0].addInput(L1.neurons[2], 0.60);
+  OUT.neurons[1].addInput(L1.neurons[0], 0.50);
+  OUT.neurons[1].addInput(L1.neurons[1], 0.55);
+  OUT.neurons[1].addInput(L1.neurons[2], 0.60);
+
+  var NET = [IN, L1, OUT];
+
+  var DATA = [0.05, 0.10]; // Input
+  var EXPT = [0.75136507, 0.772928465]; // Expected calculated output with initial weights
+
+  var CALC = NN.doProc(NET, DATA); // Actual output
+
+  if (!isFloatAlmostEqual(L1.neurons[0].getSum(), 0.3775))
+  {
+    isOk = false;
+    console.log("FAIL: L1[0].sum", CALC, EXPT); // neth1
+  }
+
+  if (!isFloatAlmostEqual(L1.neurons[0].get(), 0.593269992))
+  {
+    isOk = false;
+    console.log("FAIL: L1[0].out", CALC, EXPT); // outh1
+  }
+
+  if (!isFloatAlmostEqual(L1.neurons[1].get(), 0.596884378))
+  {
+    isOk = false;
+    console.log("FAIL: L1[1].out", CALC, EXPT); // outh2
+  }
+
+  if (!isFloatAlmostEqual(OUT.neurons[0].getSum(), 1.105905967))
+  {
+    isOk = false;
+    console.log("FAIL: OUT[0].sum", CALC, EXPT); // neto1
+  }
+
+  if (!isFloatAlmostEqual(OUT.neurons[0].get(), 0.75136507))
+  {
+    isOk = false;
+    console.log("FAIL: OUT[0].sum", CALC, EXPT); // outo1
+  }
+
+  if (!isFloatAlmostEqual(OUT.neurons[1].get(), 0.77290465))
+  {
+    isOk = false;
+    console.log("FAIL: OUT[1].sum", CALC, EXPT); // outo1
+  }
+
+  if (!isFloatAlmostEqual(CALC[0], EXPT[0]) || !isFloatAlmostEqual(CALC[1], EXPT[1]))
+  {
+    isOk = false;
+    console.log("FAIL: Result", CALC, EXPT);
+  }
+
+  // Backpropagation
+
+  var TARG = [0.01, 0.99]; // Expected valid output
+
+  var ETotal = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALC) / NN.NetworkStat.AGG_ERROR_DIVIDED_BY;
+  if (!isFloatAlmostEqual(ETotal, 0.298371109))
+  {
+    isOk = false;
+    console.log("FAIL: ETotal", ETotal);
+  }
+
+  // Do train step
+
+  NN.doTrain(NET, [DATA], [TARG], 0.5, 1);
+
+  if (!isFloatAlmostEqual(L1.neurons[0].w[0], 0.149780716))
+  {
+    isOk = false;
+    console.log("FAIL: L1[0].w[0]", CALC, EXPT); // w1
+  }
+
+  if (!isFloatAlmostEqual(L1.neurons[0].w[1], 0.19956143))
+  {
+    isOk = false;
+    console.log("FAIL: L1[0].w[1]", CALC, EXPT); // w2
+  }
+
+  if (!isFloatAlmostEqual(L1.neurons[1].w[0], 0.24975114))
+  {
+    isOk = false;
+    console.log("FAIL: L1[1].w[0]", CALC, EXPT); // w3
+  }
+
+  if (!isFloatAlmostEqual(L1.neurons[1].w[1], 0.29950229))
+  {
+    isOk = false;
+    console.log("FAIL: L1[1].w[1]", CALC, EXPT); // w4
+  }
+
+  if (!isFloatAlmostEqual(OUT.neurons[0].w[0], 0.35891648))
+  {
+    isOk = false;
+    console.log("FAIL: OUT[0].w[0]", CALC, EXPT); // w5
+  }
+
+  if (!isFloatAlmostEqual(OUT.neurons[0].w[1], 0.408666186))
+  {
+    isOk = false;
+    console.log("FAIL: OUT[0].w[1]", CALC, EXPT); // w6
+  }
+
+  if (!isFloatAlmostEqual(OUT.neurons[1].w[0], 0.511301270))
+  {
+    isOk = false;
+    console.log("FAIL: OUT[1].w[0]", CALC, EXPT); // w7
+  }
+
+  if (!isFloatAlmostEqual(OUT.neurons[1].w[1], 0.561370121))
+  {
+    isOk = false;
+    console.log("FAIL: OUT[1].w[1]", CALC, EXPT); // w8
+  }
+
+  // Restore baises back, as exmaple does not affects biases
+
+  L1.neurons[0].w[2]  = 0.35;
+  L1.neurons[1].w[2]  = 0.35;
+  OUT.neurons[0].w[2] = 0.60;
+  OUT.neurons[1].w[2] = 0.60;
+
+  var CALC = NN.doProc(NET, DATA); // Actual output after 1st iteration
+
+  var ETotalT1 = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALC) / NN.NetworkStat.AGG_ERROR_DIVIDED_BY;
+  if (!isFloatAlmostEqual(ETotalT1, 0.291027924))
+  {
+    isOk = false;
+    console.log("FAIL: ETotalT1", ETotalT1);
+  }
+
+  return isOk;
+}
+
 // Test case(s) [PRNG]
 // ----------------------------------------------------
 // require prng.js
@@ -353,6 +512,7 @@ function runUnitTests()
   var TESTS = 
   [ 
     doUnitTest1, 
+    doUnitTest2, 
     doUnitTestRNG0, 
     doUnitTestRNG1, 
     doUnitTestRNG2, 
