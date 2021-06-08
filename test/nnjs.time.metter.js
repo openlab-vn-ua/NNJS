@@ -15,7 +15,7 @@ function TimeMetter()
 
   // static reimport
 
-  var millis = self.millis;
+  var millisGlobal = self.millisGlobal;
 
   // const
 
@@ -30,14 +30,14 @@ function TimeMetter()
 
   function start()
   {
-    timeStart = millis();
+    timeStart = millisGlobal();
     timeStop  = VOID_TIME;
   }
   that.start = start;
 
   function stop()
   {
-    timeStop = millis();
+    timeStop = millisGlobal();
     return timeStop - timeStart;
   }
   that.stop = stop;
@@ -50,7 +50,7 @@ function TimeMetter()
 
   function millisPassed()
   {
-    if (timeStop == VOID_TIME) { return millis() - timeStart; }
+    if (timeStop == VOID_TIME) { return millisGlobal() - timeStart; }
     return timeStop - timeStart;
   }
   that.millisPassed = millisPassed;
@@ -67,7 +67,7 @@ function TimeMetter()
 (function()
 {
   var self = TimeMetter;
-  self.millis = function millis()
+  self.millisGlobal = function millisGlobal()
   {
     return Date.now();
   }
