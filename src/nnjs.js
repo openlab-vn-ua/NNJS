@@ -717,15 +717,15 @@ var NetworkStat = new function () // static class
   {
     var result = 0;
     var layersCount = NET.length;
-    for (var i = 0; i < layersCount; i++) // skip input layer
+    for (var i = 0; i < layersCount; i++) // TODO: may skip input layer later
     {
       var neuronsCount = NET[i].neurons.length;
       for (var ii = 0; ii < neuronsCount; ii++)
       {
-        var neuron = NET[i].neurons[ii].w;
-        if ((neuron != null) && (NET[i].neurons[ii].w != null)) // proc neuron
+        var neuron = NET[i].neurons[ii];
+        if ((neuron != null) && (neuron.w != null)) // proc neuron
         {
-          result += NET[i].neurons[ii].w.length;
+          result += neuron.w.length;
         }
       }
     }
