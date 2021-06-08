@@ -181,25 +181,31 @@ function doUnitTest2()
 
   var isOk = true;
 
+  function PN(n)
+  {
+    if (n.w == null) { throw "Invalid neuron type (ProcNeuron[Trainee] expected)"; }
+    return (n);
+  }
+
   var IN  = new NN.Layer(2, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
 
   var L1  = new NN.Layer(2, NN.ProcNeuron); L1.addNeuron(NN.BiasNeuron);
   //L1.addInputAll(IN);
-  L1.neurons[0].addInput(IN.neurons[0], 0.15);
-  L1.neurons[0].addInput(IN.neurons[1], 0.20);
-  L1.neurons[0].addInput(IN.neurons[2], 0.35);
-  L1.neurons[1].addInput(IN.neurons[0], 0.25);
-  L1.neurons[1].addInput(IN.neurons[1], 0.30);
-  L1.neurons[1].addInput(IN.neurons[2], 0.35);
+  PN(L1.neurons[0]).addInput(IN.neurons[0], 0.15);
+  PN(L1.neurons[0]).addInput(IN.neurons[1], 0.20);
+  PN(L1.neurons[0]).addInput(IN.neurons[2], 0.35);
+  PN(L1.neurons[1]).addInput(IN.neurons[0], 0.25);
+  PN(L1.neurons[1]).addInput(IN.neurons[1], 0.30);
+  PN(L1.neurons[1]).addInput(IN.neurons[2], 0.35);
 
   var OUT = new NN.Layer(2, NN.ProcNeuron); 
   //OUT.addInputAll(L1);
-  OUT.neurons[0].addInput(L1.neurons[0], 0.40);
-  OUT.neurons[0].addInput(L1.neurons[1], 0.45);
-  OUT.neurons[0].addInput(L1.neurons[2], 0.60);
-  OUT.neurons[1].addInput(L1.neurons[0], 0.50);
-  OUT.neurons[1].addInput(L1.neurons[1], 0.55);
-  OUT.neurons[1].addInput(L1.neurons[2], 0.60);
+  PN(OUT.neurons[0]).addInput(L1.neurons[0], 0.40);
+  PN(OUT.neurons[0]).addInput(L1.neurons[1], 0.45);
+  PN(OUT.neurons[0]).addInput(L1.neurons[2], 0.60);
+  PN(OUT.neurons[1]).addInput(L1.neurons[0], 0.50);
+  PN(OUT.neurons[1]).addInput(L1.neurons[1], 0.55);
+  PN(OUT.neurons[1]).addInput(L1.neurons[2], 0.60);
 
   var NET = [IN, L1, OUT];
 
@@ -208,37 +214,37 @@ function doUnitTest2()
 
   var CALC = NN.doProc(NET, DATA); // Actual output
 
-  if (!isFloatAlmostEqual(L1.neurons[0].getSum(), 0.3775))
+  if (!isFloatAlmostEqual(PN(L1.neurons[0]).getSum(), 0.3775))
   {
     isOk = false;
     console.log("FAIL: L1[0].sum", CALC, EXPT); // neth1
   }
 
-  if (!isFloatAlmostEqual(L1.neurons[0].get(), 0.593269992))
+  if (!isFloatAlmostEqual(PN(L1.neurons[0]).get(), 0.593269992))
   {
     isOk = false;
     console.log("FAIL: L1[0].out", CALC, EXPT); // outh1
   }
 
-  if (!isFloatAlmostEqual(L1.neurons[1].get(), 0.596884378))
+  if (!isFloatAlmostEqual(PN(L1.neurons[1]).get(), 0.596884378))
   {
     isOk = false;
     console.log("FAIL: L1[1].out", CALC, EXPT); // outh2
   }
 
-  if (!isFloatAlmostEqual(OUT.neurons[0].getSum(), 1.105905967))
+  if (!isFloatAlmostEqual(PN(OUT.neurons[0]).getSum(), 1.105905967))
   {
     isOk = false;
     console.log("FAIL: OUT[0].sum", CALC, EXPT); // neto1
   }
 
-  if (!isFloatAlmostEqual(OUT.neurons[0].get(), 0.75136507))
+  if (!isFloatAlmostEqual(PN(OUT.neurons[0]).get(), 0.75136507))
   {
     isOk = false;
     console.log("FAIL: OUT[0].sum", CALC, EXPT); // outo1
   }
 
-  if (!isFloatAlmostEqual(OUT.neurons[1].get(), 0.77290465))
+  if (!isFloatAlmostEqual(PN(OUT.neurons[1]).get(), 0.77290465))
   {
     isOk = false;
     console.log("FAIL: OUT[1].sum", CALC, EXPT); // outo1
@@ -320,9 +326,9 @@ function doUnitTest2()
   OUT.neurons[0].w[2] = 0.60;
   OUT.neurons[1].w[2] = 0.60;
 
-  var CALC = NN.doProc(NET, DATA); // Actual output after 1st iteration
+  var CALCT1 = NN.doProc(NET, DATA); // Actual output after 1st iteration
 
-  var ETotalT1 = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALC) / NN.NetworkStat.AGG_ERROR_DIVIDED_BY;
+  var ETotalT1 = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALCT1) / NN.NetworkStat.AGG_ERROR_DIVIDED_BY;
   if (!isFloatAlmostEqual(ETotalT1, 0.291027924))
   {
     isOk = false;
@@ -527,10 +533,18 @@ function runUnitTests()
   for (var i = 0; i < count; i++)
   {
     var test = TESTS[i];
-    if (!test())
+    try
+    {
+      if (!test())
+      {
+        failed++;
+        console.log("UNIT "+STR(i)+" failed");
+      }
+    }
+    catch(e)
     {
       failed++;
-      console.log("UNIT "+STR(i)+" failed");
+      console.log("UNIT " + STR(i) + " failed with exception " + STR(e));
     }
   }
 
