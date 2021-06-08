@@ -44,9 +44,9 @@ function doUnitTest1()
 
   NN.DIV_IN_TRAIN = true;
 
-  var IN  = new NN.Layer(2, NN.InputNeuron);
+  var IN  = new NN.Layer(2, NN.TheNeuronFactory(NN.InputNeuron));
 
-  var L1  = new NN.Layer(3, NN.ProcNeuron); 
+  var L1  = new NN.Layer(3, NN.TheNeuronFactory(NN.ProcNeuron)); 
   //L1.addInputAll(IN);
   L1.neurons[0].addInput(IN.neurons[0], 0.8);
   L1.neurons[0].addInput(IN.neurons[1], 0.2);
@@ -55,13 +55,13 @@ function doUnitTest1()
   L1.neurons[2].addInput(IN.neurons[0], 0.3);
   L1.neurons[2].addInput(IN.neurons[1], 0.5);
 
-  var OUT = new NN.Layer(1, NN.ProcNeuron); 
+  var OUT = new NN.Layer(1, NN.TheNeuronFactory(NN.ProcNeuron)); 
   //OUT.addInputAll(L1);
   OUT.neurons[0].addInput(L1.neurons[0], 0.3);
   OUT.neurons[0].addInput(L1.neurons[1], 0.5);
   OUT.neurons[0].addInput(L1.neurons[2], 0.9);
 
-  var NET = [IN, L1, OUT];
+  var NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT);
 
   var DATA = [1, 1]; // Input
   var TARG = [0]; // Expected output
@@ -187,9 +187,9 @@ function doUnitTest2()
     return (n);
   }
 
-  var IN  = new NN.Layer(2, NN.InputNeuron); IN.addNeuron(NN.BiasNeuron);
+  var IN  = new NN.Layer(2, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeuron(new NN.BiasNeuron());
 
-  var L1  = new NN.Layer(2, NN.ProcNeuron); L1.addNeuron(NN.BiasNeuron);
+  var L1  = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuron)); L1.addNeuron(new NN.BiasNeuron());
   //L1.addInputAll(IN);
   PN(L1.neurons[0]).addInput(IN.neurons[0], 0.15);
   PN(L1.neurons[0]).addInput(IN.neurons[1], 0.20);
@@ -198,7 +198,7 @@ function doUnitTest2()
   PN(L1.neurons[1]).addInput(IN.neurons[1], 0.30);
   PN(L1.neurons[1]).addInput(IN.neurons[2], 0.35);
 
-  var OUT = new NN.Layer(2, NN.ProcNeuron); 
+  var OUT = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuron)); 
   //OUT.addInputAll(L1);
   PN(OUT.neurons[0]).addInput(L1.neurons[0], 0.40);
   PN(OUT.neurons[0]).addInput(L1.neurons[1], 0.45);
@@ -207,7 +207,7 @@ function doUnitTest2()
   PN(OUT.neurons[1]).addInput(L1.neurons[1], 0.55);
   PN(OUT.neurons[1]).addInput(L1.neurons[2], 0.60);
 
-  var NET = [IN, L1, OUT];
+  var NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT);
 
   var DATA = [0.05, 0.10]; // Input
   var EXPT = [0.75136507, 0.772928465]; // Expected calculated output with initial weights

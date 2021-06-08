@@ -263,6 +263,18 @@ function BiasNeuron()
   }
 }
 
+function TheNeuronFactory(NeuronConstructor) // public NeuronFactory
+{
+  var that = this || {}; // work both as new or regular call
+
+  that.makeNeuron = function ()
+  {
+    return new NeuronConstructor();
+  };
+
+  return that;
+}
+
 /// Layer
 /// Represent a layer of network
 /// This class composes neuron network layer and acts as container for neurons
@@ -272,6 +284,8 @@ function Layer(N, maker)
 {
   var that = this;
 
+  // Constructor A
+
   if (N == null) { N = 0; }
   if (N < 0) { N = 0; }
 
@@ -279,16 +293,28 @@ function Layer(N, maker)
 
   that.neurons = [];
 
-  that.addNeuron = function(maker)
+  // Methods
+
+  that.addNeuron = function(neuron)
   {
-    var theNeuron = new maker();
-    that.neurons.push(theNeuron);
-    return(theNeuron);
+    that.neurons.push(neuron);
+    return(neuron);
+  };
+
+  function makeNeuronByMaker(maker)
+  {
+    if (maker.makeNeuron != null) { return maker.makeNeuron(); }
+    return new maker; // legacy mode, maker just a function
   }
 
-  for (var i = 0; i < N; i++)
+  that.addNeurons = function(N, maker)
   {
-    that.addNeuron(maker);
+    if (N <= 0) { return; }
+    for (var i = 0; i < N; i++)
+    {
+      var theNeuron = makeNeuronByMaker(maker);
+      that.addNeuron(theNeuron);
+    }
   }
 
   that.addInputAll = function(inputLayer)
@@ -300,6 +326,10 @@ function Layer(N, maker)
 
     return(that);
   }
+
+  // Constructor B
+
+  that.addNeurons(N, maker);
 }
 
 // Processing functions
@@ -325,7 +355,21 @@ function doProcNet(layers)
 /// This class composes multiple neuron network layers and acts as container for layers
 /// Network Container "owns" Layer(s)
 
-// class Network // In JS NET just an array of layers (so far)
+function Network()
+{
+  var that = this || {};
+
+  that.layers = [];
+
+  that.addLayer = function(layer)
+  {
+    that.layers.push(layer);
+    return (layer);
+  };
+
+  return that;
+};
+
 
 // Assign inputs
 // The inputs assigned to first layer of the network
@@ -333,14 +377,14 @@ function doProcNet(layers)
 
 function doProcAssignInput(NET, inputs)
 {
-  if ((NET.length <= 0) && (inputs.length <= 0))
+  if ((NET.layers.length <= 0) && (inputs.length <= 0))
   {
     return; // strange, but assume OK
   }
 
-  assert(NET.length > 0);
+  assert(NET.layers.length > 0);
 
-  var LIN = NET[0];
+  var LIN = NET.layers[0];
 
   // assert(LIN->neurons.length == inputs.length); // input layer may have bias neuron(s)
 
@@ -373,14 +417,14 @@ function doProcGetResult(NET)
 {
   var result = [];
 
-  if (NET.length <= 0)
+  if (NET.layers.length <= 0)
   {
     return result; // strange, but assume empty response
   }
 
-  assert(NET.length > 0);
+  assert(NET.layers.length > 0);
 
-  var LOUT   = NET[NET.length-1];
+  var LOUT   = NET.layers[NET.layers.length-1];
 
   for (var i = 0; i < LOUT.neurons.length; i++)
   {
@@ -394,7 +438,7 @@ function doProc(NET, inputs)
 {
   doProcAssignInput(NET, inputs);
 
-  doProcNet(NET);
+  doProcNet(NET.layers);
 
   return doProcGetResult(NET);
 }
@@ -716,13 +760,13 @@ var NetworkStat = new function () // static class
   function getNetWeightsCount(NET)
   {
     var result = 0;
-    var layersCount = NET.length;
+    var layersCount = NET.layers.length;
     for (var i = 0; i < layersCount; i++) // TODO: may skip input layer later
     {
-      var neuronsCount = NET[i].neurons.length;
+      var neuronsCount = NET.layers[i].neurons.length;
       for (var ii = 0; ii < neuronsCount; ii++)
       {
-        var neuron = NET[i].neurons[ii];
+        var neuron = NET.layers[i].neurons[ii];
         if ((neuron != null) && (neuron.w != null)) // proc neuron
         {
           result += neuron.w.length;
@@ -736,10 +780,10 @@ var NetworkStat = new function () // static class
   function getNetNeuronsCount(NET)
   {
     var result = 0;
-    var layersCount = NET.length;
+    var layersCount = NET.layers.length;
     for (var i = 0; i < layersCount; i++)
     {
-      result += NET[i].neurons.length;
+      result += NET.layers[i].neurons.length;
     }
     return result;
   }
@@ -800,12 +844,12 @@ function doTrainStep(NET, DATA, TARG, SPEED)
 
   var CALC = doProc(NET, DATA); // we need this because sum has to be updated in NET for each neuron for THIS test case
 
-  for (var i = 1; i < NET.length; i++) // skip input layer
+  for (var i = 1; i < NET.layers.length; i++) // skip input layer
   {
-    var iicount = NET[i].neurons.length;
+    var iicount = NET.layers[i].neurons.length;
     for (var ii = 0; ii < iicount; ii++)
     {
-      var neuron = NET[i].neurons[ii];
+      var neuron = NET.layers[i].neurons[ii];
       if ((neuron != null) && (neuron.initNewWeights != null))
       {
         neuron.initNewWeights(); // prepare
@@ -815,7 +859,7 @@ function doTrainStep(NET, DATA, TARG, SPEED)
 
   // Output layer (special handling)
 
-  var LOUT = NET[NET.length-1].neurons;
+  var LOUT = NET.layers[NET.layers.length-1].neurons;
 
   var OSME = []; // output sum margin of error (AKA Expected - Calculated) for each output
   var DOS  = []; // delta output sum for each output neuron
@@ -839,14 +883,14 @@ function doTrainStep(NET, DATA, TARG, SPEED)
   // will apply training back recursively
   // recursion controlled by laterIndex
 
-  doTrainStepProcPrevLayer(LOUT, DOS, NET.length-1);
+  doTrainStepProcPrevLayer(LOUT, DOS, NET.layers.length-1);
 
-  for (var i = 1; i < NET.length; i++) // skip input layer
+  for (var i = 1; i < NET.layers.length; i++) // skip input layer
   {
-    var iicount = NET[i].neurons.length;
+    var iicount = NET.layers[i].neurons.length;
     for (var ii = 0; ii < iicount; ii++)
     {
-      var neuron = NET[i].neurons[ii];
+      var neuron = NET.layers[i].neurons[ii];
       if ((neuron != null) && (neuron.applyNewWeights != null))
       {
         neuron.applyNewWeights(); // adjust
@@ -1036,7 +1080,10 @@ NN.ProcNeuron  = ProcNeuron;
 NN.InputNeuron = InputNeuron;
 NN.BiasNeuron  = BiasNeuron;
 NN.Layer       = Layer;
+NN.Network     = Network;
 NN.doProc      = doProc;
+
+NN.TheNeuronFactory = TheNeuronFactory;
 
 // Math
 
