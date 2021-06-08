@@ -347,6 +347,8 @@ function sampleOcrNetwork()
     NET = [IN, L1, L2, OUT];
   }
 
+  console.log("Network created: Layers=" + STR(NET.length) + " Neurons=" + STR(NN.NetworkStat.getNetNeuronsCount(NET)) + " Weights=" + STR(NN.NetworkStat.getNetWeightsCount(NET)));
+
   // Dataset prepration
 
   // SAMPLES // 2D array [letter][sample] = data[]
@@ -436,11 +438,18 @@ function sampleOcrNetwork()
   {
     var DUMP_FAILED_IMAGES = false;
 
+    var startTimeMetter = new NN.TimeMetter();
+    startTimeMetter.start();
+
     var CHKRS = [];
     for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
     {
       CHKRS.push(NN.doProc(NET, DATAS[dataIndex]));
     }
+
+    startTimeMetter.stop();
+
+    var stepTime = Math.round((1000.0 * startTimeMetter.millisPassed() / DATAS.length)); // microseconds (us)
 
     var vdif = 0.15; // max diff for smart verification
     var veps = 0.4; // epsilon for strict verification
@@ -506,13 +515,13 @@ function sampleOcrNetwork()
 
     if (isOK)
     {
-      console.log("Verification step " + STR(stepName) + ":OK [100%]");
+      console.log("Verification step " + STR(stepName) + ":OK [100%]" + (" InferenceTime:" + STR(stepTime) + "us"));
     }
     else
     {
       var statFull = 0.0 + statGood + statFail + statWarn;
       function showPerc(val) { return STR("") + STR(Math.round(val * 1000.0) / 10.0); }
-      console.log("Verification step " + STR(stepName) + ":Done:" + (" GOOD=" + showPerc(statGood / statFull)) + (" WARN=" + showPerc(statWarn / statFull)) + (" FAIL=" + showPerc(statFail / statFull)));
+      console.log("Verification step " + STR(stepName) + ":Done:" + (" InferenceTime:" + STR(stepTime) + "us") + (" GOOD=" + showPerc(statGood / statFull)) + (" WARN=" + showPerc(statWarn / statFull)) + (" FAIL=" + showPerc(statFail / statFull)));
     }
 
     return(isOK);

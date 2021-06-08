@@ -713,6 +713,38 @@ var NetworkStat = new function () // static class
   }
   self.getR1Array = getR1Array;
 
+  function getNetWeightsCount(NET)
+  {
+    var result = 0;
+    var layersCount = NET.length;
+    for (var i = 0; i < layersCount; i++) // skip input layer
+    {
+      var neuronsCount = NET[i].neurons.length;
+      for (var ii = 0; ii < neuronsCount; ii++)
+      {
+        var neuron = NET[i].neurons[ii].w;
+        if ((neuron != null) && (NET[i].neurons[ii].w != null)) // proc neuron
+        {
+          result += NET[i].neurons[ii].w.length;
+        }
+      }
+    }
+    return result;
+  }
+  self.getNetWeightsCount = getNetWeightsCount;
+
+  function getNetNeuronsCount(NET)
+  {
+    var result = 0;
+    var layersCount = NET.length;
+    for (var i = 0; i < layersCount; i++)
+    {
+      result += NET[i].neurons.length;
+    }
+    return result;
+  }
+  self.getNetNeuronsCount = getNetNeuronsCount;
+
   return self;
 }();
 
@@ -899,8 +931,8 @@ function TrainingProgressReporter()
   
   return that;
 };
-
-(function() // Static init
+// static init
+(function()
 {
   var self = TrainingProgressReporter;
 

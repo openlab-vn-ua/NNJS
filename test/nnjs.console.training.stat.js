@@ -1,6 +1,7 @@
 // Simple console write trainging reporter
 
 // Require nnjs.js
+// Require nnjs.time.metter.js
 
 (function () {
 
@@ -27,11 +28,19 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
     reportInterval = 0;
   }
 
+  that.beginTimeMetter = null;
+
   function STR(x) { return "" + x; }
 
   // methods/callbacks
 
-  that.onTrainingBegin = function(args) { console.log("TRAINING Started", args.SPEED); };
+  that.onTrainingBegin = function(args)
+  {
+    that.beginTimeMetter = new NN.TimeMetter();
+    that.beginTimeMetter.start();
+
+    console.log("TRAINING Started", args.SPEED);
+  };
 
   var lastSeenIndex = 0;
 
@@ -65,9 +74,17 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
   {
     var n = lastSeenIndex + 1;
     var NET = args.NET;
+
+    that.beginTimeMetter.stop();
+    var spentTime = that.beginTimeMetter.millisPassed(); // ms
+    if (spentTime <= 0) { spentTime = 1; }
+
+    var scale = NN.NetworkStat.getNetWeightsCount(NET) * args.DATAS.length * n;
+    var speed = Math.round((1.0 * scale / spentTime));
+
     if (isOk)
     {
-      console.log("TRAINING OK", "iterations:"+STR(n), NET);
+      console.log("TRAINING OK", "iterations:" + STR(n), "time:" + STR(spentTime) + " ms", "speed:" + STR(speed) + "K w*s/s", NET);
     }
     else
     {
