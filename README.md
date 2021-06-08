@@ -19,8 +19,8 @@ var NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT
 ### Train
 ```
 // NN.doTrain(Net,DATAS, TARGS) // run training session
-var DATAS = [ [...], [...], ... ]; // source data samples (each sample must have same count as number of inputs)
-var TARGS = [ [...], [...], ... ]; // expected result vectors (each result much have same count as number of outputs)
+//var DATAS = [ [...], [...], ... ]; // source data samples (each sample holds values for inputs)
+//var TARGS = [ [...], [...], ... ]; // expected result vectors (each result holds expected outputs)
 console.log("Training, please wait ...");
 if (!NN.doTrain(NET, DATAS, TARGS))
 {
