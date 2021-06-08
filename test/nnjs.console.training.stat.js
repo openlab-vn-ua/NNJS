@@ -28,7 +28,7 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
     reportInterval = 0;
   }
 
-  that.beginTimeMetter = null;
+  var beginTimeMetter = new NN.TimeMetter();
 
   function STR(x) { return "" + x; }
 
@@ -36,10 +36,8 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
 
   that.onTrainingBegin = function(args)
   {
-    that.beginTimeMetter = new NN.TimeMetter();
-    that.beginTimeMetter.start();
-
     console.log("TRAINING Started", args.SPEED);
+    beginTimeMetter.start();
   };
 
   var lastSeenIndex = 0;
@@ -72,11 +70,12 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
 
   that.onTrainingEnd   = function(args, isOk)
   {
+    beginTimeMetter.stop();
+
     var n = lastSeenIndex + 1;
     var NET = args.NET;
 
-    that.beginTimeMetter.stop();
-    var spentTime = that.beginTimeMetter.millisPassed(); // ms
+    var spentTime = beginTimeMetter.millisPassed(); // ms
     if (spentTime <= 0) { spentTime = 1; }
 
     var scale = NN.NetworkStat.getNetWeightsCount(NET) * args.DATAS.length * n;

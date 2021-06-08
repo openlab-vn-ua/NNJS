@@ -37,19 +37,27 @@ function TimeMetter()
 
   function stop()
   {
+    if (timeStart == VOID_TIME) { return -1; }
     timeStop = millisGlobal();
     return timeStop - timeStart;
   }
   that.stop = stop;
 
-  function isRunning()
+  function isStarted()
   {
-    return (timeStop == VOID_TIME);
+    return (timeStart != VOID_TIME);
   }
-  that.isRunning = isRunning;
+  that.isStarted = isStarted;
+
+  function isStoped()
+  {
+    return (timeStop != VOID_TIME);
+  }
+  that.isStoped = isStoped;
 
   function millisPassed()
   {
+    if (timeStart == VOID_TIME) { return -1; }
     if (timeStop == VOID_TIME) { return millisGlobal() - timeStart; }
     return timeStop - timeStart;
   }
@@ -57,7 +65,7 @@ function TimeMetter()
 
   // Constructor
 
-  start();
+  // start();
 
   // export
 
