@@ -260,7 +260,7 @@ function doUnitTest2()
 
   var TARG = [0.01, 0.99]; // Expected valid output
 
-  var ETotal = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALC) / NN.NetworkStat.AGG_ERROR_DIVIDED_BY;
+  var ETotal = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALC) * NN.NetworkStat.AGG_ERROR_SUM_TO_SIMPLE_LOSS_MULTIPLY_BY;
   if (!isFloatAlmostEqual(ETotal, 0.298371109))
   {
     isOk = false;
@@ -328,7 +328,7 @@ function doUnitTest2()
 
   var CALCT1 = NN.doProc(NET, DATA); // Actual output after 1st iteration
 
-  var ETotalT1 = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALCT1) / NN.NetworkStat.AGG_ERROR_DIVIDED_BY;
+  var ETotalT1 = NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALCT1) * NN.NetworkStat.AGG_ERROR_SUM_TO_SIMPLE_LOSS_MULTIPLY_BY;
   if (!isFloatAlmostEqual(ETotalT1, 0.291027924))
   {
     isOk = false;

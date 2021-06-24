@@ -675,10 +675,11 @@ var NetworkStat = new function () // static class
   }
   self.isResultSampleMatchArgmax = isResultSampleMatchArgmax;
 
-  // Aggregated error
+  // Aggregated error sum (AKA source for simple loss function)
 
-  var AGG_ERROR_DIVIDED_BY = 2.0; // to be used as error function, should be mutiplied by 1/2 so derivative will not have 2x in front
-  self.AGG_ERROR_DIVIDED_BY = AGG_ERROR_DIVIDED_BY;
+  // Actually, simple loss function on sample is aggregated error sum divided by 2.0.
+  // The divisor is need to have a "clean" partial derivative as simple difference
+  // in many cases divisor ommited, as different anyway is mutiplied to small number (learning rate), but we define it here just in case
 
   function getResultSampleAggErrorSum(TARG, CALC)
   {
@@ -699,7 +700,7 @@ var NetworkStat = new function () // static class
   }
   self.getResultSampleAggErrorSum = getResultSampleAggErrorSum;
 
-  function getResultSetAggErrorSum(TARGS, CALCS) // private
+  function getResultSetAggErrorSum(TARGS, CALCS)
   {
     var count = TARGS.length;
 
@@ -714,26 +715,63 @@ var NetworkStat = new function () // static class
 
     return(result);
   }
+  self.getResultSetAggErrorSum = getResultSetAggErrorSum;
 
-  function getResultSetAggError(TARGS, CALCS)
+  // AggSum to SimpleLoss mutiplier: to be used as loss function (error function), should be mutiplied by 1/2 so derivative will not have 2x in front
+
+  var AGG_ERROR_SUM_TO_SIMPLE_LOSS_MULTIPLY_BY = 0.5;
+  self.AGG_ERROR_SUM_TO_SIMPLE_LOSS_MULTIPLY_BY = AGG_ERROR_SUM_TO_SIMPLE_LOSS_MULTIPLY_BY;
+
+  function getResultSampleSimpleLoss(TARG, CALC)
+  {
+    return getResultSampleAggErrorSum(TARG, CALC) * AGG_ERROR_SUM_TO_SIMPLE_LOSS_MULTIPLY_BY;
+  }
+  self.getResultSampleSimpleLoss = getResultSampleSimpleLoss;
+
+  // Mean Squared error
+
+  function getResultSampleMSE(TARG, CALC)
+  {
+    var result = getResultSampleAggErrorSum(TARG, CALC);
+    var count = TARG.length;
+    assert(count == CALC.length);
+    if (count <= 0) { return NaN; }
+    return(result / count);
+  }
+  self.getResultSampleMSE = getResultSampleMSE;
+
+  function getResultSetMSE(TARGS, CALCS)
   {
     var result = getResultSetAggErrorSum(TARGS, CALCS);
     var count = TARGS.length;
     if (count > 0) { count *= TARGS[0].length; }
     if (count <= 0) { return NaN; }
-    return(result / count / AGG_ERROR_DIVIDED_BY);
+    return(result / count);
   }
-  self.getResultSetAggError = getResultSetAggError;
+  self.getResultSetMSE = getResultSetMSE;
 
-  function getResultSetAggErrorByAggErrorSum(sum, sampleSize, samplesCount)
+  function getResultSetMSEByAggErrorSum(sum, sampleSize, samplesCount)
   {
     if (sampleSize == null) { return NaN; }
     if (samplesCount == null) { samplesCount = 1; }
     var count = samplesCount;
     if (count > 0) { count *= sampleSize; }
     if (count <= 0) { return NaN; }
-    // to be used as error function, should be mutiplied by 1/2 so derivative will not have 2x in front
-    return(sum / count / AGG_ERROR_DIVIDED_BY);
+    return(sum / count);
+  }
+  self.getResultSetMSEByAggErrorSum = getResultSetMSEByAggErrorSum;
+
+  // Aggregated error (AKA MSE rooted)
+
+  function getResultSetAggError(TARGS, CALCS)
+  {
+    return Math.sqrt(getResultSetMSE(TARGS, CALCS));
+  }
+  self.getResultSetAggError = getResultSetAggError;
+
+  function getResultSetAggErrorByAggErrorSum(sum, sampleSize, samplesCount)
+  {
+    return Math.sqrt(getResultSetMSEByAggErrorSum(sum, sampleSize, samplesCount));
   }
   self.getResultSetAggErrorByAggErrorSum = getResultSetAggErrorByAggErrorSum;
 
