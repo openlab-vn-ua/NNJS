@@ -1250,6 +1250,7 @@ NN.Network     = Network;
 NN.doProc      = doProc;
 
 NN.TheNeuronFactory = TheNeuronFactory;
+NN.ExtNeuronFactory = ExtNeuronFactory;
 
 // Math
 
