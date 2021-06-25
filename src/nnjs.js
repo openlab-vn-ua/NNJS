@@ -36,18 +36,125 @@ function assert(condition) { if (!condition) {
   throw 'Assert failed';
 } }
 
-// Activation functions
+// Activation : Base
 
-function S(x)
-{
-  return(1.0/(1.0+Math.exp(-x)));
-}
+/// Activation function provider (Should be stateless)
+//double ActFunc.S(double)
 
-function SD(x)
+/// Activation function provider for training  (Should be stateless)
+//double ActFuncTrainee.S(souble)
+//double ActFuncTrainee.SD(souble)
+
+// Activation : Sigmoid
+
+var CalcMathSigmoid = (new function () // static provider
 {
-  // e^x/(1 + e^x)^2
-  return(Math.exp(x)/Math.pow(1.0+Math.exp(x),2));
-}
+  var self = this;
+  self.S   = function(x) { return (1.0 / (1.0 + Math.exp(-x))); }
+  self.SD  = function(x) { return (Math.exp(x) / Math.pow(1.0 + Math.exp(x), 2)); } // e^x/(1 + e^x)^2
+}());
+
+function ActFuncSigmoid()
+{
+  var that = this || {};
+  that.S = CalcMathSigmoid.S;
+  return that;
+};
+(function () { var self = ActFuncSigmoid; var s = new self(); self.getInstance = function () { return s; } })()
+
+function ActFuncSigmoidTrainee()
+{
+  var that = this || {};
+  that.S  = CalcMathSigmoid.S;
+  that.SD = CalcMathSigmoid.SD;
+  return that;
+};
+(function () { var self = ActFuncSigmoidTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+
+// Activation : RELU
+
+var CalcMathRELU = (new function () // static provider
+{
+  var self = this;
+  self.S   = function(x) { return (x < 0) ? 0.0 : x; }
+  self.SD  = function(x) { return (x < 0) ? 0.0 : 1.0; }
+}());
+
+function ActFuncRELU()
+{
+  var that = this || {};
+  that.S = CalcMathRELU.S;
+  return that;
+};
+(function () { var self = ActFuncRELU; var s = new self(); self.getInstance = function () { return s; } })()
+
+function ActFuncRELUTrainee()
+{
+  var that = this || {};
+  that.S  = CalcMathRELU.S;
+  that.SD = CalcMathRELU.SD;
+  return that;
+};
+(function () { var self = ActFuncRELUTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+
+// Activation : LRELU
+
+var CalcMathLRELULeak = 0.1; // [0.0..1.0)
+
+var CalcMathLRELU = (new function () // static provider
+{
+  var self = this;
+  self.S   = function(x) { return (x < 0) ? x * CalcMathLRELULeak : x; }
+  self.SD  = function(x) { return (x < 0) ? CalcMathLRELULeak : 1.0; }
+}());
+
+function ActFuncLRELU()
+{
+  var that = this || {};
+  that.S = CalcMathLRELU.S;
+  return that;
+};
+(function () { var self = ActFuncLRELU; var s = new self(); self.getInstance = function () { return s; } })()
+
+function ActFuncLRELUTrainee()
+{
+  var that = this || {};
+  that.S  = CalcMathLRELU.S;
+  that.SD = CalcMathLRELU.SD;
+  return that;
+};
+(function () { var self = ActFuncLRELUTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+
+// Activation : Tanh
+
+var CalcMathTanh = (new function () // static provider
+{
+  var self = this;
+  self.S   = function(x) { return Math.tanh(x); }
+  self.SD  = function(x) { return 1.0-Math.pow(Math.tanh(x),2.0); }
+}());
+
+function ActFuncTanh()
+{
+  var that = this || {};
+  that.S = CalcMathTanh.S;
+  return that;
+};
+(function () { var self = ActFuncTanh; var s = new self(); self.getInstance = function () { return s; } })()
+
+function ActFuncTanhTrainee()
+{
+  var that = this || {};
+  that.S  = CalcMathTanh.S;
+  that.SD = CalcMathTanh.SD;
+  return that;
+};
+(function () { var self = ActFuncTanhTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+
+// Default Activation Functions
+
+function  getDefActFunc()        { return ActFuncSigmoid.getInstance(); }
+function  getDefActFuncTrainee() { return ActFuncSigmoidTrainee.getInstance(); }
 
 // Neuron types
 
@@ -70,12 +177,22 @@ function SD(x)
 // .addNewWeightsDelta(DW)       - adds DW to new  weights (.nw)  [N/A]             add dw to .nw      [ignored]
 // .applyNewWeights()            - adds DW to new  weights (.nw)  [N/A]             copy .nw to .w     [ignored]
 
+// BaseNeuron (abstract)
+
+function BaseNeuron()
+{
+  var that = this || {};
+  that.proc = function () { throw "BaseNeuron.proc() is abstract!"; }
+  that.get  = function () { throw "BaseNeuron.get() is abstract!"; }
+  return that;
+}
+
 // InputNeuron
 // Always return set value as its output
 
 function InputNeuron()
 {
-  var that = this;
+  var that = new BaseNeuron();
 
   that.out = 0.0;
 
@@ -90,7 +207,11 @@ function InputNeuron()
   {
     return(that.out);
   }
+
+  return that;
 }
+
+function dynamicCastInputNeuron(n) { if (n.set != null) { return n; } return null; }
 
 function getRandomInitWeight()
 {
@@ -100,17 +221,20 @@ function getRandomInitWeight()
 // Proc Neuron
 // Neuron that proccess its input inside proc method
 
-function ProcNeuron()
+function ProcNeuron(func)
 {
-  var that = this;
+  if (func == null) { func = getDefActFunc(); }
+
+  var that = new BaseNeuron();
 
   that.inputs = [];
   that.w = [];
 
+  that.func = func;
+
   that.out = 0.0;
 
-  that.sum = 0.0; // for train
-  that.nw  = [];  // for train
+  that.sum = 0.0; // Used for for training, but kept here to simplify training implemenation
 
   function calcOutputSum(ins)
   {
@@ -153,6 +277,8 @@ function ProcNeuron()
   // Core proccsing
   // Computes output based on input
 
+  that.S = function (x) { assert(func != null); assert(func.S != null); return func.S(x); }
+
   that.proc = function()
   {
     assert(that.inputs.length == that.w.length);
@@ -166,7 +292,7 @@ function ProcNeuron()
     }
 
     that.sum = calcOutputSum(ins);
-    that.out = S(that.sum);
+    that.out = that.S(that.sum);
   }
 
   that.get = function()
@@ -174,7 +300,22 @@ function ProcNeuron()
     return(that.out);
   }
 
-  // for train
+  return that;
+}
+
+function dynamicCastProcNeuron(n) { if (n.S != null) { return n; } return null; }
+
+function ProcNeuronTrainee(func)
+{
+  // ProcNeurons extension used for training
+
+  if (func == null) { func = getDefActFuncTrainee(); }
+
+  var that = new ProcNeuron(func);
+
+  that.nw = [];  // for train
+
+  that.SD = function (x) { assert(func != null); assert(func.SD != null); return func.SD(x); }
 
   that.getSum = function()
   {
@@ -200,35 +341,20 @@ function ProcNeuron()
   {
     that.w = that.nw.slice();
   }
+
+  return that;
 }
+
+function dynamicCastProcNeuronTrainee(n) { if (n.SD != null) { return n; } return null; }
 
 // BiasNeuron
 // Always return 1.0 as its output
 
 function BiasNeuron()
 {
-  var that = this;
+  var that = new BaseNeuron();
 
   var BIAS = 1.0;
-
-  that.inputs = [];
-  that.w = [];
-
-  that.out = BIAS;
-  that.sum = BIAS;
-
-  that.sum = 0.0; // for train
-  that.nw  = [];  // for train
-
-  that.addInput = function(neuron, w)
-  {
-    // ignore
-  }
-
-  that.addInputAll = function(neurons, weights)
-  {
-    // ignore
-  }
 
   that.proc = function()
   {
@@ -237,31 +363,14 @@ function BiasNeuron()
 
   that.get = function()
   {
-    return(that.out);
+    return(BIAS);
   }
 
-  // for train
-
-  that.getSum = function()
-  {
-    return(that.sum);
-  }
-
-  that.initNewWeights = function()
-  {
-    // ignore
-  }
-
-  that.addNewWeightsDelta = function (dw)
-  {
-    // ignore
-  }
-
-  that.applyNewWeights = function()
-  {
-    // ignore
-  }
+  return that;
 }
+
+/// Neuron factory
+/// Creates neurons when batch creation is used
 
 function TheNeuronFactory(NeuronConstructor) // public NeuronFactory
 {
@@ -270,6 +379,18 @@ function TheNeuronFactory(NeuronConstructor) // public NeuronFactory
   that.makeNeuron = function ()
   {
     return new NeuronConstructor();
+  };
+
+  return that;
+}
+
+function ExtNeuronFactory(NeuronConstructor, constructorArg) // public NeuronFactory
+{
+  var that = this || {}; // work both as new or regular call
+
+  that.makeNeuron = function ()
+  {
+    return new NeuronConstructor(constructorArg);
   };
 
   return that;
@@ -321,7 +442,11 @@ function Layer(N, maker)
   {
     for (var i = 0; i < that.neurons.length; i++)
     {
-      that.neurons[i].addInputAll(inputLayer.neurons);
+      var neuron = dynamicCastProcNeuron(that.neurons[i]);
+      if (neuron != null)
+      {
+        neuron.addInputAll(inputLayer.neurons);
+      }
     }
 
     return(that);
@@ -390,11 +515,11 @@ function doProcAssignInput(NET, inputs)
 
   for (var i = 0; i < LIN.neurons.length; i++)
   {
-    var input = LIN.neurons[i];
+    var input = dynamicCastInputNeuron(LIN.neurons[i]);
     
-    if ((input == null) || (input.set == null))
+    if (input == null)
     {
-      // Bias Neuron (skip)
+      // Bias or ProcNeuron (skip) // Not InputNeuron (skip)
     }
     else
     {
@@ -449,7 +574,7 @@ function getDeltaOutputSum(outNeuron, OSME) // OSME = output sum margin of error
 {
   if ((outNeuron == null) || (outNeuron.getSum == null)) { return NaN; }
   var OS = outNeuron.getSum();
-  var DOS = SD(OS) * OSME;
+  var DOS = outNeuron.SD(OS) * OSME;
   return(DOS);
 }
 
@@ -480,14 +605,14 @@ function getDeltaHiddenSums(theNeuron, DOS)
   var ds;
   for (var i = 0; i < count; i++)
   {
-    var input = theNeuron.inputs[i];
-    if ((input == null) || (input.getSum == null))
+    var input = dynamicCastProcNeuronTrainee(theNeuron.inputs[i]);
+    if (input == null)
     {
       ds = NaN; // This neuron input is non-trainee neuron, ds is N/A since we do not know its getSum()
     }
     else // looks like SD here is SD for input neuron (?) use input->SD(input->getSum()) later
     {
-      if (NN.DIV_IN_TRAIN) { ds = DOS / theNeuron.w[i] * SD(input.getSum()); } else { ds = DOS * theNeuron.w[i] * SD(input.getSum()); }
+      if (NN.DIV_IN_TRAIN) { ds = DOS / theNeuron.w[i] * input.SD(input.getSum()); } else { ds = DOS * theNeuron.w[i] * input.SD(input.getSum()); }
     }
 
     DHS.push(ds);
@@ -804,8 +929,8 @@ var NetworkStat = new function () // static class
       var neuronsCount = NET.layers[i].neurons.length;
       for (var ii = 0; ii < neuronsCount; ii++)
       {
-        var neuron = NET.layers[i].neurons[ii];
-        if ((neuron != null) && (neuron.w != null)) // proc neuron
+        var neuron = dynamicCastProcNeuron(NET.layers[i].neurons[ii]);
+        if (neuron != null) // proc neuron
         {
           result += neuron.w.length;
         }
@@ -849,9 +974,9 @@ function doTrainStepProcPrevLayer(LOUT, DOS, layerIndex)
 
   for (var i = 0; i < LOUT.length; i++)
   {
-    var neuron = LOUT[i];
+    var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
 
-    if ((neuron == null) || (neuron.inputs == null)) { break; } // Non-trainable neuron
+    if (neuron == null) { break; } // Non-trainable neuron
 
     var LP = neuron.inputs;
     var DOHS = getDeltaHiddenSums(neuron, DOS[i]);
@@ -860,8 +985,8 @@ function doTrainStepProcPrevLayer(LOUT, DOS, layerIndex)
 
     for (var ii = 0; ii < LP.length; ii++)
     {
-      var input = LP[ii];
-      if ((input != null) && (input.getSum != null))
+      var input = dynamicCastProcNeuronTrainee(LP[ii]);
+      if (input != null)
       {
         var DW = getDeltaWeights(input, DOHS[ii]);
         input.addNewWeightsDelta(DW);
@@ -887,8 +1012,8 @@ function doTrainStep(NET, DATA, TARG, SPEED)
     var iicount = NET.layers[i].neurons.length;
     for (var ii = 0; ii < iicount; ii++)
     {
-      var neuron = NET.layers[i].neurons[ii];
-      if ((neuron != null) && (neuron.initNewWeights != null))
+      var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
+      if (neuron != null)
       {
         neuron.initNewWeights(); // prepare
       }
@@ -907,11 +1032,11 @@ function doTrainStep(NET, DATA, TARG, SPEED)
 
   for (var i = 0; i < LOUT.length; i++)
   {
-    var neuron = LOUT[i];
+    var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
     OSME.push((TARG[i] - CALC[i]) * SPEED);
     DOS.push(getDeltaOutputSum(neuron, OSME[i])); // will handle neuron=NULL case
     DOIW.push(getDeltaWeights(neuron, DOS[i])); // will handle neuron=NULL case
-    if ((neuron != null) && (neuron.addNewWeightsDelta != null))
+    if (neuron != null)
     {
       neuron.addNewWeightsDelta(DOIW[i]);
     }
@@ -928,8 +1053,8 @@ function doTrainStep(NET, DATA, TARG, SPEED)
     var iicount = NET.layers[i].neurons.length;
     for (var ii = 0; ii < iicount; ii++)
     {
-      var neuron = NET.layers[i].neurons[ii];
-      if ((neuron != null) && (neuron.applyNewWeights != null))
+      var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
+      if (neuron != null)
       {
         neuron.applyNewWeights(); // adjust
       }
@@ -1114,9 +1239,12 @@ NN.Internal.getDeltaHiddenSums = getDeltaHiddenSums;
 
 // Core
 
-NN.ProcNeuron  = ProcNeuron;
-NN.InputNeuron = InputNeuron;
-NN.BiasNeuron  = BiasNeuron;
+NN.BaseNeuron = BaseNeuron;
+NN.InputNeuron = InputNeuron; NN.dynamicCastInputNeuron = dynamicCastInputNeuron;
+NN.ProcNeuron = ProcNeuron; NN.dynamicCastProcNeuron = dynamicCastProcNeuron;
+NN.ProcNeuronTrainee = ProcNeuronTrainee; NN.dynamicCastProcNeuronTrainee = dynamicCastProcNeuronTrainee;
+NN.BiasNeuron = BiasNeuron;
+
 NN.Layer       = Layer;
 NN.Network     = Network;
 NN.doProc      = doProc;

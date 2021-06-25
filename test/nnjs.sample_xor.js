@@ -15,9 +15,9 @@ function sampleXorNetwork()
   }
 
   var IN  = new NN.Layer(2, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeuron(new NN.BiasNeuron());
-  var L1  = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuron)); L1.addNeuron(new NN.BiasNeuron());
+  var L1  = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L1.addNeuron(new NN.BiasNeuron());
   L1.addInputAll(IN);
-  var OUT = new NN.Layer(1, NN.TheNeuronFactory(NN.ProcNeuron)); 
+  var OUT = new NN.Layer(1, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); 
   OUT.addInputAll(L1);
   var NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT);
 
@@ -37,11 +37,11 @@ function sampleXorNetwork2()
   }
 
   var IN  = new NN.Layer(2, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeuron(new NN.BiasNeuron());
-  var L1  = new NN.Layer(3, NN.TheNeuronFactory(NN.ProcNeuron)); L1.addNeuron(new NN.BiasNeuron());
+  var L1  = new NN.Layer(3, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L1.addNeuron(new NN.BiasNeuron());
   L1.addInputAll(IN);
-  var L2  = new NN.Layer(3, NN.TheNeuronFactory(NN.ProcNeuron)); L2.addNeuron(new NN.BiasNeuron());
+  var L2  = new NN.Layer(3, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L2.addNeuron(new NN.BiasNeuron());
   L2.addInputAll(L1);
-  var OUT = new NN.Layer(1, NN.TheNeuronFactory(NN.ProcNeuron)); 
+  var OUT = new NN.Layer(1, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); 
   OUT.addInputAll(L2);
   var NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(L2); NET.addLayer(OUT);
 

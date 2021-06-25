@@ -334,16 +334,16 @@ function sampleOcrNetwork()
   if (LAYERS == 3)
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron));
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.TheNeuronFactory(NN.ProcNeuron)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
-    var OUT = new NN.Layer(SAMPLES.length, NN.TheNeuronFactory(NN.ProcNeuron)); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
+    var OUT = new NN.Layer(SAMPLES.length, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
     NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT);
   }
   else
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron));
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.TheNeuronFactory(NN.ProcNeuron)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
-    var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.ProcNeuron)); L2.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L2.addInputAll(L1);
-    var OUT = new NN.Layer(SAMPLES.length, NN.TheNeuronFactory(NN.ProcNeuron)); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
+    var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L2.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L2.addInputAll(L1);
+    var OUT = new NN.Layer(SAMPLES.length, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
     NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(L2); NET.addLayer(OUT);
   }
 

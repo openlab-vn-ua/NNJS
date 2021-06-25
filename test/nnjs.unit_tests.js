@@ -46,7 +46,7 @@ function doUnitTest1()
 
   var IN  = new NN.Layer(2, NN.TheNeuronFactory(NN.InputNeuron));
 
-  var L1  = new NN.Layer(3, NN.TheNeuronFactory(NN.ProcNeuron)); 
+  var L1  = new NN.Layer(3, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); 
   //L1.addInputAll(IN);
   L1.neurons[0].addInput(IN.neurons[0], 0.8);
   L1.neurons[0].addInput(IN.neurons[1], 0.2);
@@ -55,7 +55,7 @@ function doUnitTest1()
   L1.neurons[2].addInput(IN.neurons[0], 0.3);
   L1.neurons[2].addInput(IN.neurons[1], 0.5);
 
-  var OUT = new NN.Layer(1, NN.TheNeuronFactory(NN.ProcNeuron)); 
+  var OUT = new NN.Layer(1, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); 
   //OUT.addInputAll(L1);
   OUT.neurons[0].addInput(L1.neurons[0], 0.3);
   OUT.neurons[0].addInput(L1.neurons[1], 0.5);
@@ -183,13 +183,14 @@ function doUnitTest2()
 
   function PN(n)
   {
-    if (n.w == null) { throw "Invalid neuron type (ProcNeuron[Trainee] expected)"; }
-    return (n);
+    var result = NN.dynamicCastProcNeuronTrainee(n);
+    if (result == null) { throw "Invalid neuron type (ProcNeuron[Trainee] expected)"; }
+    return (result);
   }
 
   var IN  = new NN.Layer(2, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeuron(new NN.BiasNeuron());
 
-  var L1  = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuron)); L1.addNeuron(new NN.BiasNeuron());
+  var L1  = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L1.addNeuron(new NN.BiasNeuron());
   //L1.addInputAll(IN);
   PN(L1.neurons[0]).addInput(IN.neurons[0], 0.15);
   PN(L1.neurons[0]).addInput(IN.neurons[1], 0.20);
@@ -198,7 +199,7 @@ function doUnitTest2()
   PN(L1.neurons[1]).addInput(IN.neurons[1], 0.30);
   PN(L1.neurons[1]).addInput(IN.neurons[2], 0.35);
 
-  var OUT = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuron)); 
+  var OUT = new NN.Layer(2, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); 
   //OUT.addInputAll(L1);
   PN(OUT.neurons[0]).addInput(L1.neurons[0], 0.40);
   PN(OUT.neurons[0]).addInput(L1.neurons[1], 0.45);
@@ -544,7 +545,7 @@ function runUnitTests()
     catch(e)
     {
       failed++;
-      console.log("UNIT " + STR(i) + " failed with exception " + STR(e));
+      console.log("UNIT " + STR(i) + " failed with exception " + STR(e), e);
     }
   }
 
