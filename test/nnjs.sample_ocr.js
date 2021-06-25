@@ -10,6 +10,12 @@
 
 var SAMPLE_OCR_SX = 9;
 var SAMPLE_OCR_SY = 8;
+var SAMPLE_OCR_INP_VOID  = 0.0;
+var SAMPLE_OCR_INP_FILL  = 1.0;
+
+var SAMPLE_OCR_OUT_NONE  = 0.0;
+var SAMPLE_OCR_OUT_FOUND = 1.0;
+
 
 function emptyStr() { return ""; }
 
@@ -135,7 +141,7 @@ function sampleOcrGetSamples()
     {
       for (var x = 0; x < SAMPLE_OCR_SX; x++)
       {
-        R.push(L[y*SAMPLE_OCR_SX+x] == "*" ? 1 : 0);
+        R.push(L[y*SAMPLE_OCR_SX+x] == " " ? SAMPLE_OCR_INP_VOID : SAMPLE_OCR_INP_FILL);
       }
     }
 
@@ -143,12 +149,13 @@ function sampleOcrGetSamples()
   }
 
   // letters to recognize, each SX * SY size in many samples
-  var I0 = [ 
-             [ getLNArray(IA0), getLNArray(IA1), getLNArray(IA2), ], 
-             [ getLNArray(IB0), getLNArray(IB1) ], 
-             [ getLNArray(IC0), getLNArray(IC1) ], 
-             [ getLNArray(ID0), getLNArray(ID1), getLNArray(ID2) ]
-           ]; 
+  var I0 = 
+  [
+    [ getLNArray(IA0), getLNArray(IA1), getLNArray(IA2), ], 
+    [ getLNArray(IB0), getLNArray(IB1) ], 
+    [ getLNArray(IC0), getLNArray(IC1) ], 
+    [ getLNArray(ID0), getLNArray(ID1), getLNArray(ID2) ]
+  ];
 
   return(I0);
 }
@@ -168,14 +175,15 @@ function getNoisedInput(L, noiseCount, noiseType)
   {
     if (noiseType == NOISE_TYPE_PIXEL_DARKER_LIGHTER)
     {
-      if (value <= 0) { return(NN.Internal.getRandom(0.0 , 0.49)); }
-      if (value >= 1) { return(NN.Internal.getRandom(0.51, 1.0 )); }
+      var HALF = (SAMPLE_OCR_INP_VOID + SAMPLE_OCR_INP_FILL) / 2.0;
+      if (value <  HALF) { return(NN.Internal.getRandom(Math.min(SAMPLE_OCR_INP_VOID, SAMPLE_OCR_INP_FILL), HALF - 0.1)); }
+      if (value >= HALF) { return(NN.Internal.getRandom(HALF + 0.1, Math.max(SAMPLE_OCR_INP_VOID, SAMPLE_OCR_INP_FILL))); }
       return(value);
     }
 
     if (noiseType == NOISE_TYPE_PIXEL_RANDOM)
     {
-      return(NN.Internal.getRandom(0.0,1.0));
+      return(NN.Internal.getRandom(Math.min(SAMPLE_OCR_INP_VOID, SAMPLE_OCR_INP_FILL), Math.max(SAMPLE_OCR_INP_VOID, SAMPLE_OCR_INP_FILL)));
     }
 
     return(1-value); // flip pixel
@@ -302,6 +310,8 @@ function sampleAddLetTexts(L,inT,addTopSep,addLeftSep,addBottomSep,addRightSep)
 
 function sampleOcrNetwork()
 {
+  var testResult = true;
+
   // The Dataset
 
   if (true)
@@ -315,14 +325,14 @@ function sampleOcrNetwork()
   var RESULTS = []; // [letter] = R1 array
   for (var dataIndex = 0; dataIndex < SAMPLES.length; dataIndex++)
   {
-    var RESULT = NN.NetworkStat.getR1Array(dataIndex,SAMPLES.length); // target result for this letter
+    var RESULT = NN.NetworkStat.getR1Array(dataIndex,SAMPLES.length, SAMPLE_OCR_OUT_FOUND, SAMPLE_OCR_OUT_NONE); // target result for this letter
     RESULTS.push(RESULT);
   }
 
   // The Net
 
   var LAYERS = 3;
-  var NET;
+  var NET = new NN.Network();
 
   if (true)
   {
@@ -331,20 +341,23 @@ function sampleOcrNetwork()
     console.log("sampleOcrNetwork", "(net)", "seed=", seed, "layers=", LAYERS);
   }
 
+  var actFunc = NN.ActFuncSigmoidTrainee.getInstance();
+  var outFunc = NN.ActFuncSigmoidTrainee.getInstance();
+
   if (LAYERS == 3)
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron));
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
-    var OUT = new NN.Layer(SAMPLES.length, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
-    NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT);
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, actFunc)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
+    var OUT = new NN.Layer(SAMPLES.length, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, outFunc)); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
+    NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT);
   }
   else
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron));
-    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
-    var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); L2.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L2.addInputAll(L1);
-    var OUT = new NN.Layer(SAMPLES.length, NN.TheNeuronFactory(NN.ProcNeuronTrainee)); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
-    NET = new NN.Network(); NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(L2); NET.addLayer(OUT);
+    var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, actFunc)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
+    var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, actFunc)); L2.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L2.addInputAll(L1);
+    var OUT = new NN.Layer(SAMPLES.length, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, outFunc)); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
+    NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(L2); NET.addLayer(OUT);
   }
 
   console.log("Network created: Layers=" + STR(NET.layers.length) + " Neurons=" + STR(NN.NetworkStat.getNetNeuronsCount(NET)) + " Weights=" + STR(NN.NetworkStat.getNetWeightsCount(NET)));
@@ -424,13 +437,13 @@ function sampleOcrNetwork()
   // Training
 
   console.log("Training, please wait ...");
-  if (!NN.doTrain(NET, DATAS, TARGS, -1, -1, new NN.TrainingProgressReporterConsole(10)))
+  if (!NN.doTrain(NET, DATAS, TARGS, 0.125, 10000, new NN.TrainingProgressReporterConsole(10)))
   {
-    console.log("Training failed!", NET);
-    return(false);
+    console.log("Training failed (does not to achieve loss error margin?)", NET);
+    testResult = false;
   }
 
-  console.log("Training complete", NET);
+  console.log("Training finsihed", NET);
 
   // Verification
 
@@ -529,7 +542,7 @@ function sampleOcrNetwork()
 
   // Verify on source dataset (dry run)
 
-  verifyProc(NET, DATAS, TARGS, "Source", DATAS.length / DATASE.length);
+  testResult = verifyProc(NET, DATAS, TARGS, "Source", DATAS.length / DATASE.length) && testResult;
 
   // Create noised data
 
@@ -540,25 +553,23 @@ function sampleOcrNetwork()
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],1));
   }
-
-  verifyProc(NET, DATASN, TARGS, "Noised.F1", DATASN.length / DATASE.length);
+  testResult = verifyProc(NET, DATASN, TARGS, "Noised.F1", DATASN.length / DATASE.length) && testResult;
 
   DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],30,NOISE_TYPE_PIXEL_DARKER_LIGHTER));
   }
-
-  verifyProc(NET, DATASN, TARGS, "Noised.DL30", DATASN.length / DATASE.length);
+  testResult = verifyProc(NET, DATASN, TARGS, "Noised.DL30", DATASN.length / DATASE.length) && testResult;
 
   DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],10,NOISE_TYPE_PIXEL_RANDOM));
   }
-
-  verifyProc(NET, DATASN, TARGS, "Noised.R10", DATASN.length / DATASE.length);
-  return(true);
+  testResult = verifyProc(NET, DATASN, TARGS, "Noised.R10", DATASN.length / DATASE.length) && testResult;
+  
+  return(testResult);
 }
 
 //sampleOcrNetwork();
