@@ -38,11 +38,11 @@ function doUnitTest1()
   // That is why we use DIV_IN_TRAIN=true here to keep clculation consistent with the original good explaied test (basides the trick with "/")
   // Mode DIV_IN_TRAIN=true intended to use for this test only, during production work we use is as false
 
+  TR = new NN.NetworkTrainerBackProp();
+
+  TR.DIV_IN_TRAIN = true;
+
   var isOk = true;
-
-  var ODT = NN.DIV_IN_TRAIN;
-
-  NN.DIV_IN_TRAIN = true;
 
   function addInput(to, input, weight)
   {
@@ -106,14 +106,14 @@ function doUnitTest1()
     console.log("FAIL: output sum margin of error", OSME);
   }
 
-  var DOS = NN.Internal.getDeltaOutputSum(PNT(OUT.neurons[0]), OSME);
+  var DOS = TR.getDeltaOutputSum(PNT(OUT.neurons[0]), OSME);
   if (!isFloatAlmostEqual(DOS, -0.13529621033156358))
   {
     console.log("FAIL: delta output sum", DOS); // How much sum have to be adjusted
   }
 
   var pOut = PNT(OUT.neurons[0]).inputs; // Pre-output layer (L1)
-  var DWS = NN.Internal.getDeltaWeights(PNT(OUT.neurons[0]), DOS);
+  var DWS = TR.getDeltaWeights(PNT(OUT.neurons[0]), DOS);
 
   //console.log("INFO: delta weights", DWS);
 
@@ -122,7 +122,7 @@ function doUnitTest1()
     console.log("FAIL: delta weights", DWS); // How much w of prev neurons have to be adjusted
   }
 
-  PNT(OUT.neurons[0]).initNewWeights();
+  PNT(OUT.neurons[0]).initTrainStep();
   PNT(OUT.neurons[0]).addNewWeightsDelta(DWS);
 
   var NWS = PNT(OUT.neurons[0]).nw;
@@ -135,7 +135,7 @@ function doUnitTest1()
   // calclulate how to change outputs of prev layer (DOS for each neuton of prev layer)
   // DOS is delta output sum for this neuron
 
-  var DHS = NN.Internal.getDeltaHiddenSums(PNT(OUT.neurons[0]), DOS);
+  var DHS = TR.getDeltaHiddenSums(PNT(OUT.neurons[0]), DOS);
 
   if (!isFloatListAlmostEqual(DHS, [ -0.08866949824511623, -0.045540261294143396, -0.032156856991522986 ]))
   {
@@ -149,8 +149,8 @@ function doUnitTest1()
 
   for (var i = 0; i < pOut.length; i++)
   {
-    DWSL1.push(NN.Internal.getDeltaWeights(PNT(L1.neurons[i]), DHS[i]));
-    PNT(L1.neurons[i]).initNewWeights(); // would work this way since only one output neuron (so will be called once for each hidden neuron)
+    DWSL1.push(TR.getDeltaWeights(PNT(L1.neurons[i]), DHS[i]));
+    PNT(L1.neurons[i]).initTrainStep(); // would work this way since only one output neuron (so will be called once for each hidden neuron)
     PNT(L1.neurons[i]).addNewWeightsDelta(DWSL1[i]);
     NWSL1.push(PNT(L1.neurons[i]).nw);
   }
@@ -195,12 +195,10 @@ function doUnitTest1()
     console.log("FAIL: Result after adjust", CALC2); // should be 0.6917258326007417
   }
 
-  NN.DIV_IN_TRAIN = ODT;
-
   return isOk;
 }
 
-function doUnitTest2()
+function doUnitTest2WithTrainer(trainer)
 {
   // Test case based on
   // https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
@@ -297,7 +295,7 @@ function doUnitTest2()
 
   // Do train step
 
-  NN.doTrain(NET, [DATA], [TARG], 0.5, 1);
+  NN.doTrain(NET, [DATA], [TARG], 0.5, 1, null, null, trainer);
 
   if (!isFloatAlmostEqual(PNT(L1.neurons[0]).w[0], 0.149780716))
   {
@@ -364,6 +362,16 @@ function doUnitTest2()
   }
 
   return isOk;
+}
+
+function doUnitTest2_1()
+{
+  return doUnitTest2WithTrainer(new NN.NetworkTrainerBackProp());
+}
+
+function doUnitTest2_2()
+{
+  return doUnitTest2WithTrainer(new NN.NetworkTrainerBackPropFast());
 }
 
 // Test case(s) [PRNG]
@@ -546,7 +554,8 @@ function runUnitTests()
   var TESTS = 
   [ 
     doUnitTest1, 
-    doUnitTest2, 
+    doUnitTest2_1, 
+    doUnitTest2_2, 
     doUnitTestRNG0, 
     doUnitTestRNG1, 
     doUnitTestRNG2, 

@@ -9,19 +9,19 @@
 
 var NN = new function() { var NN = this;
 
-// Public constants / params
-
-// Use "/" instead of * during train. Used in unit tests only, should be false on production
-NN.DIV_IN_TRAIN = false; 
-
 // Tools
 
-//var PRNG = new Random(1363990714); // would not train on 2+1 -> 2+1 -> 1 configuration
-var PRNG = new Random(new Date().getTime());
+//var PRNG_ = new Random(1363990714); // would not train on 2+1 -> 2+1 -> 1 configuration
+var PRNG_ = new Random(new Date().getTime());
+
+function getPRNG()
+{
+  return (PRNG_);
+}
 
 function getRandom (min, max)
 {
-  return (PRNG.randFloat(min, max));
+  return (getPRNG().randFloat(min, max));
 }
 
 // getRandomInt (from, limit) Return integer in range [from, limit) :: from-inclusive, limit-exclusive
@@ -29,7 +29,7 @@ function getRandom (min, max)
 function getRandomInt (from, limit)
 {
   if (limit == null) { limit = from; from = 0; }
-  return Math.floor((PRNG.nextFloat() * (limit - from)) + from) % limit;
+  return Math.floor((getPRNG().nextFloat() * (limit - from)) + from) % limit;
 }
 
 function assert(condition) { if (!condition) { 
@@ -159,23 +159,27 @@ function  getDefActFuncTrainee() { return ActFuncSigmoidTrainee.getInstance(); }
 // Neuron types
 
 // Neuron have to have following functions:
-// // Base                                                        Input             Normal             Bias  
-// .get()                        - to provide its current result  value of .set     result of .proc    1.0
-// .proc()                       - to proccess data on its input  [ignored]         do proc inp links  [ignored]
+// // Base                                                        Input             Normal               Bias  
+// .get()                        - to provide its current result  value of .set     result of .proc      1.0
+// .proc()                       - to proccess data on its input  [ignored]         do proc inp links    [ignored]
 // // Input
-// .set(inp)                     - to assing input value          assing inp value  [N/A]              [N/A]
+// .set(inp)                     - to assing input value          assing inp value  [N/A]                [N/A]
 // // Proc
-// .inputs[] (used for train)    - current input Neurons links    [N/A]             [input link count] [] // empty
-// .w[]      (used for train)    - current input Neurons weights  [N/A]             [input link count] [] // empty
+// .inputs[] (used for train)    - current input Neurons links    [N/A]             [input link count]   [N/A]
+// .w[]      (used for train)    - current input Neurons weights  [N/A]             [input link count]   [N/A]
 // // Construction
-// .addInput(Neuron,weight)      - add input link to Neuron       [N/A]             add input link     [ignored]
-// .addInputAll(Neurons,weights) - add input link to Neurons      [N/A]             add input links    [ignored]
-// // Train
-// .getSum()                     - raw sum of all inputs before S [N/A]             sum of .proc       1.0
-// .nw[]                         - new input Neurons weights      [N/A]             [input link count] [] // empty
-// .initNewWeights()             - init new  weights (.nw) array  [N/A]             copy .w to .nw     [ignored]
-// .addNewWeightsDelta(DW)       - adds DW to new  weights (.nw)  [N/A]             add dw to .nw      [ignored]
-// .applyNewWeights()            - adds DW to new  weights (.nw)  [N/A]             copy .nw to .w     [ignored]
+// .addInput(Neuron,weight)      - add input link to Neuron       [N/A]             add input link       [N/A]
+// .addInputAll(Neurons,weights) - add input link to Neurons      [N/A]             add input links      [N/A]
+// // Trainee
+// .getSum()                     - raw sum of all inputs before S [N/A]             sum of .proc         [N/A]
+// .nw[]                         - new input Neurons weights      [N/A]             [input link count]   [N/A]
+// .initTrainStep()              - init new  weights (.nw) array  [N/A]             .nw[]=.w[], .dos=0   [N/A]
+// .addNewWeightsDelta(DW)       - adds DW to new  weights (.nw)  [N/A]             .nw[] += DW[]        [N/A]
+// .applyNewWeights()            - adds DW to new  weights (.nw)  [N/A]             .w[]=.nw[]           [N/A]
+// // Trainee // FAST
+// .dos                          - accumulated delta out sum      [N/A]             accumulated dos      [N/A]
+// .addDeltaOutputSum(ddos)      - increments dos for neuron      [N/A]             .dos+ddos            [N/A]
+// .getDeltaOutputSum()          - return dos for neuron          [N/A]             return .dos          [N/A]
 
 // BaseNeuron (abstract)
 
@@ -213,11 +217,6 @@ function InputNeuron()
 
 function dynamicCastInputNeuron(n) { if (n.set != null) { return n; } return null; }
 
-function getRandomInitWeight()
-{
-  return(getRandom(-1, 1));
-}
-
 // Proc Neuron
 // Neuron that proccess its input inside proc method
 
@@ -226,6 +225,26 @@ function ProcNeuron(func)
   if (func == null) { func = getDefActFunc(); }
 
   var that = new BaseNeuron();
+
+  function getRandomInitWeight()
+  {
+    return (getRandom(-1, 1));
+  }
+
+  function getRandomInitWeightForNNeurons(n)
+  {
+    // Select input range of w. for n neurons
+    // Simple range is -1..1,
+    // But we may try - 1/sqrt(n)..1/sqrt(n) to reduce range of w in case of many inputs (so act func will not saturate)
+    var wrange = 1;
+
+    if (n > 0)
+    {
+      wrange = 1.0/Math.sqrt(n);
+    }
+
+    return (getRandom(-wrange, wrange));
+  }
 
   that.inputs = [];
   that.w = [];
@@ -268,6 +287,10 @@ function ProcNeuron(func)
       if ((weights != null) && (weights[i] != null))
       {
         w = weights[i];
+      }
+      else
+      {
+        w = getRandomInitWeightForNNeurons(neurons.length);
       }
 
       that.addInput(neurons[i], w);
@@ -313,18 +336,15 @@ function ProcNeuronTrainee(func)
 
   var that = new ProcNeuron(func);
 
-  that.nw = [];  // for train
+  // Main training
 
   that.SD = function (x) { assert(func != null); assert(func.SD != null); return func.SD(x); }
 
-  that.getSum = function()
+  that.nw = []; // new weights for training
+
+  that.getSum = function() // Activation function argument AKA output sum AKA os 
   {
     return(that.sum);
-  }
-
-  that.initNewWeights = function()
-  {
-    that.nw = that.w.slice();
   }
 
   that.addNewWeightsDelta = function (dw)
@@ -335,11 +355,41 @@ function ProcNeuronTrainee(func)
     }
   }
 
-  // Replace current weights with new weights
-
-  that.applyNewWeights = function()
+  that.applyNewWeights = function () // Replace current weights with new weights
   {
     that.w = that.nw.slice();
+  }
+
+  function initTrainStepMain()
+  {
+    that.nw = that.w.slice(); // copy new from w
+  }
+
+  // Fast training
+
+  that.dos = 0.0; // for train (delta output sum)
+
+  that.addDeltaOutputSum = function (ddos)
+  {
+    that.dos += ddos;
+  }
+
+  that.getDeltaOutputSum = function (dos)
+  {
+    return that.dos;
+  }
+
+  function initTrainStepFast()
+  {
+    that.dos = 0.0;
+  }
+
+  // init
+
+  that.initTrainStep = function()
+  {
+    initTrainStepMain();
+    initTrainStepFast();
   }
 
   return that;
@@ -566,59 +616,6 @@ function doProc(NET, inputs)
   doProcNet(NET.layers);
 
   return doProcGetResult(NET);
-}
-
-// Training functions
-
-function getDeltaOutputSum(outNeuron, OSME) // OSME = output sum margin of error (AKA Expected - Calculated)
-{
-  if ((outNeuron == null) || (outNeuron.getSum == null)) { return NaN; }
-  var OS = outNeuron.getSum();
-  var DOS = outNeuron.SD(OS) * OSME;
-  return(DOS);
-}
-
-function getDeltaWeights(theNeuron, DOS) // theNeuron in question, DOS = delta output sum
-{
-  if ((theNeuron == null) || (theNeuron.inputs == null)) { return []; } // Empty
-
-  var count = theNeuron.inputs.length;
-  var DWS = [];
-
-  var dw;
-  for (var i = 0; i < count; i++)
-  {
-    if (NN.DIV_IN_TRAIN) { dw = DOS / theNeuron.inputs[i].get(); } else { dw = DOS * theNeuron.inputs[i].get(); }
-    DWS.push(dw);
-  }
-
-  return(DWS);
-}
-
-function getDeltaHiddenSums(theNeuron, DOS)
-{
-  if ((theNeuron == null) || (theNeuron.inputs == null)) { return []; } // Empty
-
-  var count = theNeuron.inputs.length;
-  var DHS = [];
-
-  var ds;
-  for (var i = 0; i < count; i++)
-  {
-    var input = dynamicCastProcNeuronTrainee(theNeuron.inputs[i]);
-    if (input == null)
-    {
-      ds = NaN; // This neuron input is non-trainee neuron, ds is N/A since we do not know its getSum()
-    }
-    else // looks like SD here is SD for input neuron (?) use input->SD(input->getSum()) later
-    {
-      if (NN.DIV_IN_TRAIN) { ds = DOS / theNeuron.w[i] * input.SD(input.getSum()); } else { ds = DOS * theNeuron.w[i] * input.SD(input.getSum()); }
-    }
-
-    DHS.push(ds);
-  }
-
-  return(DHS);
 }
 
 // Network Stat and Math functionality
@@ -959,108 +956,325 @@ var NetworkStat = new function () // static class
 // -----------------------------------------------
 // Do network train
 
-function doTrainStepProcPrevLayer(LOUT, DOS, layerIndex)
+// Base class for training alogorith implemenation
+
+function NetworkTrainer()
 {
-  // Addjust previous layer(s)
-  // LOUT[neurons count] = current level (its new weights already corrected)
-  // DOS[neurons count]  = delta output sum for each neuron on in current level
-  // layerIndex = current later index, where 0 = input layer
-
-  assert(LOUT.length == DOS.length);
-  if (layerIndex <= 1)
-  {
-    return; // previous layer is an input layer, so skip any action
-  }
-
-  for (var i = 0; i < LOUT.length; i++)
-  {
-    var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
-
-    if (neuron == null) { break; } // Non-trainable neuron
-
-    var LP = neuron.inputs;
-    var DOHS = getDeltaHiddenSums(neuron, DOS[i]);
-
-    assert(LP.length == DOHS.length);
-
-    for (var ii = 0; ii < LP.length; ii++)
-    {
-      var input = dynamicCastProcNeuronTrainee(LP[ii]);
-      if (input != null)
-      {
-        var DW = getDeltaWeights(input, DOHS[ii]);
-        input.addNewWeightsDelta(DW);
-      }
-    }
-
-    doTrainStepProcPrevLayer(LP, DOHS, layerIndex-1);
-  }
+  var that = this || { };
+  that.trainInit = function trainInit(NET) { };
+  that.trainStep = function trainStep(NET, DATA, TARG, speed) { throw new Error("trainStep not implemented"); };
+  that.trainDone = function trainDone(NET) { };
+  return that;
 }
 
-function doTrainStep(NET, DATA, TARG, SPEED)
+// Back propagation training alogorithm implemenation
+
+function NetworkTrainerBackProp()
 {
-  // NET=network, DATA=input, TARG=expeted
-  // CALC=calculated output (will be calculated)
-  // Note: we re-run calculation here both to receive CALC AND update "sum" state of each neuron in NET
+  var that = new NetworkTrainer();
 
-  if ((SPEED == null) || (isNaN(SPEED)) || (SPEED <= 0.0)) { SPEED = 0.1; } // 1.0 is max
+  // Use "/" instead of * during train. Used in unit tests only, should be false on production
+  that.DIV_IN_TRAIN = false;
 
-  var CALC = doProc(NET, DATA); // we need this because sum has to be updated in NET for each neuron for THIS test case
-
-  for (var i = 1; i < NET.layers.length; i++) // skip input layer
+  function getDeltaOutputSum(outNeuron, osme) // osme = output sum margin of error (AKA Expected - Calculated)
   {
-    var iicount = NET.layers[i].neurons.length;
-    for (var ii = 0; ii < iicount; ii++)
+    if ((outNeuron == null) || (outNeuron.getSum == null)) { return NaN; }
+    var os = outNeuron.getSum();
+    var dos = outNeuron.SD(os) * osme;
+    return(dos);
+  }
+
+  function getDeltaWeights(theNeuron, dos) // theNeuron in question, dos = delta output sum
+  {
+    if ((theNeuron == null) || (theNeuron.inputs == null)) { return []; } // Empty
+
+    var count = theNeuron.inputs.length;
+    var DWS = [];
+
+    var dw;
+    for (var i = 0; i < count; i++)
     {
-      var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
+      if (that.DIV_IN_TRAIN) { dw = dos / theNeuron.inputs[i].get(); } else { dw = dos * theNeuron.inputs[i].get(); }
+      DWS.push(dw);
+    }
+
+    return(DWS);
+  }
+
+  function getDeltaHiddenSums(theNeuron, dos)
+  {
+    if ((theNeuron == null) || (theNeuron.inputs == null)) { return []; } // Empty
+
+    var count = theNeuron.inputs.length;
+    var DHS = [];
+
+    var ds;
+    for (var i = 0; i < count; i++)
+    {
+      var input = dynamicCastProcNeuronTrainee(theNeuron.inputs[i]);
+      if (input == null)
+      {
+        ds = NaN; // This neuron input is non-trainee neuron, ds is N/A since we do not know its getSum()
+      }
+      else // looks like SD here is SD for input neuron (?) use input->SD(input->getSum()) later
+      {
+        if (that.DIV_IN_TRAIN) { ds = dos / theNeuron.w[i] * input.SD(input.getSum()); } else { ds = dos * theNeuron.w[i] * input.SD(input.getSum()); }
+      }
+
+      DHS.push(ds);
+    }
+
+    return(DHS);
+  }
+
+  function doTrainStepProcPrevLayer(LOUT, DOS, layerIndex)
+  {
+    // Addjust previous layer(s)
+    // LOUT[neurons count] = current level (its new weights already corrected)
+    // DOS[neurons count]  = delta output sum for each neuron on in current level
+    // layerIndex = current later index, where 0 = input layer
+
+    assert(LOUT.length == DOS.length);
+    if (layerIndex <= 1)
+    {
+      return; // previous layer is an input layer, so skip any action
+    }
+
+    for (var i = 0; i < LOUT.length; i++)
+    {
+      var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
+
+      if (neuron == null) { break; } // Non-trainable neuron
+
+      var LP = neuron.inputs;
+      var DOHS = getDeltaHiddenSums(neuron, DOS[i]);
+
+      assert(LP.length == DOHS.length);
+
+      for (var ii = 0; ii < LP.length; ii++)
+      {
+        var input = dynamicCastProcNeuronTrainee(LP[ii]);
+        if (input != null)
+        {
+          var DW = getDeltaWeights(input, DOHS[ii]);
+          input.addNewWeightsDelta(DW);
+        }
+      }
+
+      doTrainStepProcPrevLayer(LP, DOHS, layerIndex-1);
+    }
+  }
+
+  function doTrainStep(NET, DATA, TARG, speed)
+  {
+    // NET=network, DATA=input, TARG=expeted
+    // CALC=calculated output (will be calculated)
+    // Note: we re-run calculation here both to receive CALC AND update "sum" state of each neuron in NET
+
+    if ((speed == null) || (isNaN(speed)) || (speed <= 0.0)) { speed = 0.1; } // 1.0 is max
+
+    var CALC = doProc(NET, DATA); // we need this because sum has to be updated in NET for each neuron for THIS test case
+
+    for (var i = 1; i < NET.layers.length; i++) // skip input layer
+    {
+      var iicount = NET.layers[i].neurons.length;
+      for (var ii = 0; ii < iicount; ii++)
+      {
+        var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
+        if (neuron != null)
+        {
+          neuron.initTrainStep(); // prepare
+        }
+      }
+    }
+
+    // Output layer (special handling)
+
+    var LOUT = NET.layers[NET.layers.length-1].neurons;
+
+    var OSME = []; // output sum margin of error (AKA Expected - Calculated) for each output
+    var DOS  = []; // delta output sum for each output neuron
+    var DOIW = []; // delta output neuron input weights each output neuron
+
+    // proc output layer
+
+    for (var i = 0; i < LOUT.length; i++)
+    {
+      var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
+      OSME.push((TARG[i] - CALC[i]) * speed);
+      DOS.push(getDeltaOutputSum(neuron, OSME[i])); // will handle neuron=NULL case
+      DOIW.push(getDeltaWeights(neuron, DOS[i])); // will handle neuron=NULL case
       if (neuron != null)
       {
-        neuron.initNewWeights(); // prepare
+        neuron.addNewWeightsDelta(DOIW[i]);
+      }
+    }
+
+    // proc prev layers
+    // will apply training back recursively
+    // recursion controlled by laterIndex
+
+    doTrainStepProcPrevLayer(LOUT, DOS, NET.layers.length-1);
+
+    for (var i = 1; i < NET.layers.length; i++) // skip input layer
+    {
+      var iicount = NET.layers[i].neurons.length;
+      for (var ii = 0; ii < iicount; ii++)
+      {
+        var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
+        if (neuron != null)
+        {
+          neuron.applyNewWeights(); // adjust
+        }
       }
     }
   }
 
-  // Output layer (special handling)
+  // Export
 
-  var LOUT = NET.layers[NET.layers.length-1].neurons;
+  that.trainStep = doTrainStep;
 
-  var OSME = []; // output sum margin of error (AKA Expected - Calculated) for each output
-  var DOS  = []; // delta output sum for each output neuron
-  var DOIW = []; // delta output neuron input weights each output neuron
+  // Extra export (for unit tests)
 
-  // proc output layer
+  that.getDeltaOutputSum  = getDeltaOutputSum;
+  that.getDeltaWeights    = getDeltaWeights;
+  that.getDeltaHiddenSums = getDeltaHiddenSums;
 
-  for (var i = 0; i < LOUT.length; i++)
-  {
-    var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
-    OSME.push((TARG[i] - CALC[i]) * SPEED);
-    DOS.push(getDeltaOutputSum(neuron, OSME[i])); // will handle neuron=NULL case
-    DOIW.push(getDeltaWeights(neuron, DOS[i])); // will handle neuron=NULL case
-    if (neuron != null)
-    {
-      neuron.addNewWeightsDelta(DOIW[i]);
-    }
-  }
-
-  // proc prev layers
-  // will apply training back recursively
-  // recursion controlled by laterIndex
-
-  doTrainStepProcPrevLayer(LOUT, DOS, NET.layers.length-1);
-
-  for (var i = 1; i < NET.layers.length; i++) // skip input layer
-  {
-    var iicount = NET.layers[i].neurons.length;
-    for (var ii = 0; ii < iicount; ii++)
-    {
-      var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
-      if (neuron != null)
-      {
-        neuron.applyNewWeights(); // adjust
-      }
-    }
-  }
+  return that;
 }
+
+// Back propagation training alogorithm implemenation (Fast)
+
+function NetworkTrainerBackPropFast()
+{
+  var that = new NetworkTrainer();
+
+  // Use "/" instead of * during train. Used in unit tests only, should be false on production
+  that.DIV_IN_TRAIN = false;
+  
+  function addDeltaOutputSum(outNeuron, osme) // osme = output sum margin of error (AKA Expected - Calculated) // FAST
+  {
+    if ((outNeuron == null) || (outNeuron.getSum == null)) { return; }
+    var dos = outNeuron.SD(outNeuron.getSum()) * osme;
+    outNeuron.addDeltaOutputSum(dos);
+  }
+
+  function addDeltaWeights(theNeuron, dos) // theNeuron in question, dos = delta output sum // FAST
+  {
+    if ((theNeuron == null) || (theNeuron.inputs == null)) { return; } // Empty
+
+    var count = theNeuron.inputs.length;
+
+    var dw;
+    for (var i = 0; i < count; i++)
+    {
+      if (that.DIV_IN_TRAIN) { dw = dos / theNeuron.inputs[i].get(); } else { dw = dos * theNeuron.inputs[i].get(); }
+      theNeuron.nw[i] += dw;
+    }
+  }
+
+  function addDeltaHiddenSums(theNeuron, dos) // FAST
+  {
+    if ((theNeuron == null) || (theNeuron.inputs == null)) { return; } // Empty
+
+    var count = theNeuron.inputs.length;
+
+    var ds;
+    for (var i = 0; i < count; i++)
+    {
+      var input = dynamicCastProcNeuronTrainee(theNeuron.inputs[i]);
+      if (input == null)
+      {
+        // This neuron input is non-trainee neuron, ds is N/A since we do not know its getSum()
+      }
+      else // looks like SD here is SD for input neuron (?) use input->SD(input->getSum()) later
+      {
+        if (that.DIV_IN_TRAIN) { ds = dos / theNeuron.w[i] * input.SD(input.getSum()); } else { ds = dos * theNeuron.w[i] * input.SD(input.getSum()); }
+        input.addDeltaOutputSum(ds);
+      }
+    }
+  }
+
+  function doTrainStepFast(NET, DATA, TARG, speed)
+  {
+    // NET=network, DATA=input, TARG=expeted
+    // CALC=calculated output (will be calculated)
+    // Note: we re-run calculation here both to receive CALC AND update "sum" state of each neuron in NET
+
+    if ((speed == null) || (isNaN(speed)) || (speed <= 0.0)) { speed = 0.1; } // 1.0 is max
+
+    var CALC = doProc(NET, DATA); // we need this because sum has to be updated in NET for each neuron for THIS test case
+
+    for (var i = 1; i < NET.layers.length; i++) // skip input layer
+    {
+      var iicount = NET.layers[i].neurons.length;
+      for (var ii = 0; ii < iicount; ii++)
+      {
+        var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
+        if (neuron != null)
+        {
+          neuron.initTrainStep(); // prepare
+        }
+      }
+    }
+
+    // proc output layer (special handling)
+
+    if (NET.layers.length > 0)
+    {
+      var LOUT = NET.layers[NET.layers.length - 1].neurons;
+      for (var i = 0; i < LOUT.length; i++)
+      {
+        var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
+        if (neuron != null)
+        {
+          var osme = (TARG[i] - CALC[i]) * speed;
+          addDeltaOutputSum(neuron, osme);
+          addDeltaWeights(neuron, neuron.getDeltaOutputSum());
+          addDeltaHiddenSums(neuron, neuron.getDeltaOutputSum());
+        }
+      }
+    }
+
+    // proc hidden layers, skip input layer
+
+    for (var li = NET.layers.length - 2; li > 0; li--)
+    {
+      var LOUT = NET.layers[li].neurons;
+      for (var i = 0; i < LOUT.length; i++)
+      {
+        var neuron = dynamicCastProcNeuronTrainee(LOUT[i]);
+        if (neuron != null)
+        {
+          addDeltaWeights(neuron, neuron.getDeltaOutputSum());
+          addDeltaHiddenSums(neuron, neuron.getDeltaOutputSum());
+        }
+      }
+    }
+
+    for (var i = 1; i < NET.layers.length; i++) // skip input layer
+    {
+      var iicount = NET.layers[i].neurons.length;
+      for (var ii = 0; ii < iicount; ii++)
+      {
+        var neuron = dynamicCastProcNeuronTrainee(NET.layers[i].neurons[ii]);
+        if (neuron != null)
+        {
+          neuron.applyNewWeights(); // adjust
+        }
+      }
+    }
+  }
+
+  // Export
+
+  that.trainStep = doTrainStepFast;
+
+  return that;
+}
+
+var defTrainer_ = new NetworkTrainerBackPropFast();
+function getDefTrainer() { return defTrainer_; }
 
 /// Class checker for training is done
 
@@ -1174,20 +1388,24 @@ var DEFAULT_TRAIN_COUNT    = 50000;
 var DEFAULT_TRAINING_SPEED = 0.125;
 
 /// Train the neural network
-function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainingDoneChecker)
+function doTrain(NET, DATAS, TARGS, speed, MaxN, progressReporter, isTrainingDoneChecker, trainer)
 {
-  if ((MAX_N == null) || (MAX_N < 0)) { MAX_N = DEFAULT_TRAIN_COUNT; }
-  if ((SPEED == null) || (SPEED < 0)) { SPEED = DEFAULT_TRAINING_SPEED; }
+  if ((MaxN == null) || (MaxN < 0))   { MaxN = DEFAULT_TRAIN_COUNT; }
+  if ((speed == null) || (speed < 0)) { speed = DEFAULT_TRAINING_SPEED; }
 
   if (isTrainingDoneChecker == null) { isTrainingDoneChecker = new TrainingDoneCheckerEps(); }
 
-  var trainArgs = new TrainingProgressReporter.TrainingArgs(NET, DATAS, TARGS, SPEED, MAX_N);
+  if (trainer == null) { trainer = getDefTrainer(); }
+
+  var trainArgs = new TrainingProgressReporter.TrainingArgs(NET, DATAS, TARGS, speed, MaxN);
 
   if (progressReporter != null) { progressReporter.onTrainingBegin(trainArgs); }
 
+  trainer.trainInit(NET);
+
   // steps
   var isDone = false;
-  for (var n = 0; (n < MAX_N) && (!isDone); n++)
+  for (var n = 0; (n < MaxN) && (!isDone); n++)
   {
     var CALCS = [];
     for (var s = 0; s < DATAS.length; s++)
@@ -1212,10 +1430,12 @@ function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainingDo
     {
       for (var s = 0; s < DATAS.length; s++)
       {
-        doTrainStep(NET, DATAS[s], TARGS[s], SPEED);
+        trainer.trainStep(NET, DATAS[s], TARGS[s], speed);
       }
     }
   }
+
+  trainer.trainDone(NET);
 
   if (progressReporter != null)
   { 
@@ -1230,12 +1450,9 @@ function doTrain(NET, DATAS, TARGS, SPEED, MAX_N, progressReporter, isTrainingDo
 // Some internals
 
 NN.Internal = {};
-NN.Internal.PRNG = PRNG;
+NN.Internal.getPRNG = getPRNG;
 NN.Internal.getRandom = getRandom;
 NN.Internal.getRandomInt = getRandomInt;
-NN.Internal.getDeltaOutputSum  = getDeltaOutputSum;
-NN.Internal.getDeltaWeights    = getDeltaWeights;
-NN.Internal.getDeltaHiddenSums = getDeltaHiddenSums;
 
 // Activation
 
@@ -1268,7 +1485,10 @@ NN.ExtNeuronFactory = ExtNeuronFactory;
 NN.NetworkStat = NetworkStat;
 
 // Training
-
+NN.NetworkTrainer = NetworkTrainer;
+NN.NetworkTrainerBackProp = NetworkTrainerBackProp;
+NN.NetworkTrainerBackPropFast = NetworkTrainerBackPropFast;
+NN.getDefTrainer = getDefTrainer;
 NN.TrainingDoneChecker = TrainingDoneChecker;
 NN.TrainingDoneCheckerEps = TrainingDoneCheckerEps;
 NN.TrainingProgressReporter = TrainingProgressReporter;

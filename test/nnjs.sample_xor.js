@@ -10,7 +10,7 @@ function sampleXorNetwork()
   if (true)
   {
     var seed = new Date().getTime() % 0x7FFF0000 + 1;
-    NN.Internal.PRNG.setSeed(seed);
+    NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleXorNetwork","seed=",seed);
   }
 
@@ -32,7 +32,7 @@ function sampleXorNetwork2()
   if (true)
   {
     var seed = new Date().getTime() % 0x7FFF0000 + 1;
-    NN.Internal.PRNG.setSeed(seed);
+    NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleXorNetwork2","seed=",seed);
   }
 

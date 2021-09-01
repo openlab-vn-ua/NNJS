@@ -317,7 +317,7 @@ function sampleOcrNetwork()
   if (true)
   {
     var seed = new Date().getTime() % 0x7FFF0000 + 1;
-    NN.Internal.PRNG.setSeed(seed);
+    NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleOcrNetwork", "(samples)", "seed=", seed);
   }
 
@@ -337,7 +337,7 @@ function sampleOcrNetwork()
   if (true)
   {
     var seed = new Date().getTime() % 0x7FFF0000 + 1;
-    NN.Internal.PRNG.setSeed(seed);
+    NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleOcrNetwork", "(net)", "seed=", seed, "layers=", LAYERS);
   }
 
@@ -437,7 +437,7 @@ function sampleOcrNetwork()
   // Training
 
   console.log("Training, please wait ...");
-  if (!NN.doTrain(NET, DATAS, TARGS, 0.125, 10000, new NN.TrainingProgressReporterConsole(10)))
+  if (!NN.doTrain(NET, DATAS, TARGS, 0.125, 500, new NN.TrainingProgressReporterConsole(10), new NN.TrainingDoneCheckerEps()))
   {
     console.log("Training failed (does not to achieve loss error margin?)", NET);
     testResult = false;
@@ -447,8 +447,10 @@ function sampleOcrNetwork()
 
   // Verification
 
-  function verifyProc(NET, DATAS, TARGS, stepName, imagesPerSample)
+  function verifyProc(NET, DATAS, TARGS, stepName, imagesPerSample, maxFailRate = 0.0)
   {
+    if (maxFailRate == null) { maxFailRate = 0.0; }
+
     var DUMP_FAILED_IMAGES = false;
 
     var startTimeMetter = new NN.TimeMetter();
@@ -535,6 +537,13 @@ function sampleOcrNetwork()
       var statFull = 0.0 + statGood + statFail + statWarn;
       function showPerc(val) { return STR("") + STR(Math.round(val * 1000.0) / 10.0); }
       console.log("Verification step " + STR(stepName) + ":Done:" + (" InferenceTime:" + STR(stepTime) + "us") + (" GOOD=" + showPerc(statGood / statFull)) + (" WARN=" + showPerc(statWarn / statFull)) + (" FAIL=" + showPerc(statFail / statFull)));
+      if (maxFailRate > 0)
+      {
+        if ((statFail/ statFull) <= maxFailRate)
+        {
+          isOK = true; // failed, but withing the allowed range - assume ok
+        }
+      }
     }
 
     return(isOK);
@@ -553,21 +562,21 @@ function sampleOcrNetwork()
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],1));
   }
-  testResult = verifyProc(NET, DATASN, TARGS, "Noised.F1", DATASN.length / DATASE.length) && testResult;
+  testResult = verifyProc(NET, DATASN, TARGS, "Noised.F1", DATASN.length / DATASE.length, 0.1) && testResult;
 
   DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],30,NOISE_TYPE_PIXEL_DARKER_LIGHTER));
   }
-  testResult = verifyProc(NET, DATASN, TARGS, "Noised.DL30", DATASN.length / DATASE.length) && testResult;
+  testResult = verifyProc(NET, DATASN, TARGS, "Noised.DL30", DATASN.length / DATASE.length, 0.1) && testResult;
 
   DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
   {
     DATASN.push(getNoisedInput(DATAS[dataIndex],10,NOISE_TYPE_PIXEL_RANDOM));
   }
-  testResult = verifyProc(NET, DATASN, TARGS, "Noised.R10", DATASN.length / DATASE.length) && testResult;
+  testResult = verifyProc(NET, DATASN, TARGS, "Noised.R10", DATASN.length / DATASE.length, 0.2) && testResult;
   
   return(testResult);
 }
