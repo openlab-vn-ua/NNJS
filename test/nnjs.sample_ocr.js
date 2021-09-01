@@ -322,10 +322,11 @@ function sampleOcrNetwork()
   }
 
   var SAMPLES = sampleOcrGetSamples(); // [letter][sample] = data[]
+  var SAMPLES_COUNT = SAMPLES.length;
   var RESULTS = []; // [letter] = R1 array
-  for (var dataIndex = 0; dataIndex < SAMPLES.length; dataIndex++)
+  for (var dataIndex = 0; dataIndex < SAMPLES_COUNT; dataIndex++)
   {
-    var RESULT = NN.NetworkStat.getR1Array(dataIndex,SAMPLES.length, SAMPLE_OCR_OUT_FOUND, SAMPLE_OCR_OUT_NONE); // target result for this letter
+    var RESULT = NN.NetworkStat.getR1Array(dataIndex, SAMPLES_COUNT, SAMPLE_OCR_OUT_FOUND, SAMPLE_OCR_OUT_NONE); // target result for this letter
     RESULTS.push(RESULT);
   }
 
@@ -348,7 +349,7 @@ function sampleOcrNetwork()
   {
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron));
     var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, actFunc)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
-    var OUT = new NN.Layer(SAMPLES.length, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, outFunc)); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
+    var OUT = new NN.Layer(SAMPLES_COUNT, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, outFunc)); OUT.addInputAll(L1); // Outputs: 0=A, 1=B, 2=C, ...
     NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(OUT);
   }
   else
@@ -356,7 +357,7 @@ function sampleOcrNetwork()
     var IN  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.TheNeuronFactory(NN.InputNeuron)); IN.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron));
     var L1  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY*1, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, actFunc)); L1.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L1.addInputAll(IN);
     var L2  = new NN.Layer(SAMPLE_OCR_SX*SAMPLE_OCR_SY, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, actFunc)); L2.addNeurons(1, NN.TheNeuronFactory(NN.BiasNeuron)); L2.addInputAll(L1);
-    var OUT = new NN.Layer(SAMPLES.length, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, outFunc)); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
+    var OUT = new NN.Layer(SAMPLES_COUNT, NN.ExtNeuronFactory(NN.ProcNeuronTrainee, outFunc)); OUT.addInputAll(L2); // Outputs: 0=A, 1=B, 2=C, ...
     NET.addLayer(IN); NET.addLayer(L1); NET.addLayer(L2); NET.addLayer(OUT);
   }
 
@@ -555,7 +556,7 @@ function sampleOcrNetwork()
 
   // Create noised data
 
-  var DATASN;
+  var DATASN; // would be the same size, as DATAS, so imagesPerSample will be the same
 
   DATASN = [];
   for (var dataIndex = 0; dataIndex < DATAS.length; dataIndex++)
