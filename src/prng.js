@@ -89,4 +89,14 @@ function Random(seed)
 
   return that;
 }
+// static items
+(function ()
+{
+  var self = Random;
+  self.getRandomSeed = function (timeVal)
+  {
+    return timeVal % 0x7FFF0000 + 1;
+  }
+});
+
 
