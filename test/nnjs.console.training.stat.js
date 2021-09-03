@@ -14,11 +14,19 @@ var DEFAULT_REPORT_INTERVAL = 100;
 function TrainingProgressReporterConsole(reportInterval, reportSamples)
 {
   var that = this;
-  var base = NN.TrainingProgressReporter;
+  var base = NN.TrainingProgressReporter; base.call(that);
+
+  var maxEpochCount = 0;
+  var samplesDone = 0;
+
+  var lastSeenIndex = 0;
+
+  var aggErrorSum = NaN;
+  var aggValCount = 0;
+
+  var beginTimeMetter = new NN.TimeMetter();
 
   // Constructor
-
-  base.call(this);
 
   if (reportInterval == null) { reportInterval = DEFAULT_REPORT_INTERVAL; }
   if (reportSamples  == null) { reportSamples = false; }
@@ -28,75 +36,98 @@ function TrainingProgressReporterConsole(reportInterval, reportSamples)
     reportInterval = 0;
   }
 
-  var beginTimeMetter = new NN.TimeMetter();
-
   function STR(x) { return "" + x; }
 
   // methods/callbacks
 
-  that.onTrainingBegin = function(args)
-  {
-    console.log("TRAINING Started", args.SPEED);
-    beginTimeMetter.start();
-  };
-
-  var lastSeenIndex = 0;
-
-  that.onTrainingStep  = function(args, step)
+  that.trainStart = function(NET, trainingParams, datasetInfo)
+  //override
   { 
-    lastSeenIndex = step.stepIndex;
+    maxEpochCount = trainingParams.maxEpochCount;
+    samplesDone = 0;
+    console.log("TRAINING Started", "speed:"+STR(trainingParams.speed), "fastVerify:"+STR(trainingParams.fastVerify));
+    beginTimeMetter.start();
+  }
 
-    var n     = step.stepIndex + 1;
-    var MAX_N = args.maxStepsCount;
-    var DATAS = args.DATAS;
-    var TARGS = args.TARGS;
-    var CALCS = step.CALCS;
+  that.trainEposhStart = function(NET, epochIndex)
+  //override
+  {
+    lastSeenIndex = epochIndex;
+    aggErrorSum = NaN;
+    aggValCount = 0;
+  }
+
+  that.trainSampleReportAndCheckContinue = function(NET, DATA, TARG, CALC, epochIndex, sampleIndex)
+  //override
+  {
+    samplesDone++;
+
+    var n = epochIndex + 1;
+    var s = sampleIndex;
 
     if ((reportInterval > 0) && ((n % reportInterval) == 0))
     {
-      var variance = NN.NetworkStat.getResultSetAggError(TARGS, CALCS);
-      console.log("TRAINING AggError[n,s]", MAX_N, n, variance);
+      if (isNaN(aggErrorSum)) { aggErrorSum = 0.0; }
+
+      aggErrorSum += NN.NetworkStat.getResultSampleAggErrorSum(TARG, CALC);
+      aggValCount += TARG.length;
+
       if (reportSamples)
       {
-        for (var s = 0; s < DATAS.length; s++)
-        {
-          console.log("TRAINING Result.N[n,s]", MAX_N, n, s, DATAS[s], TARGS[s], CALCS[s]);
-        }
+        console.log("TRAINING Result.N[n,s]", maxEpochCount, n, s, DATA, TARG, CALC);
       }
     }
 
-    return true; 
-  };
+    return true;
+  }
 
-  that.onTrainingEnd   = function(args, isOk)
+  that.trainEposhEnd = function(NET, epochIndex)
+  //override
+  {
+    var n = epochIndex + 1;
+    var MAX_N = maxEpochCount;
+
+    if ((reportInterval > 0) && ((n % reportInterval) == 0))
+    {
+      var variance = NN.NetworkStat.getResultAggErrorByAggErrorSum(aggErrorSum, aggValCount);
+      console.log("TRAINING AggError[n,s]", MAX_N, n, variance);
+    }
+  }
+
+  that.trainEnd = function(NET, isOk)
+  //override
   {
     beginTimeMetter.stop();
 
     var n = lastSeenIndex + 1;
-    var NET = args.NET;
 
     var spentTime = beginTimeMetter.millisPassed(); // ms
     if (spentTime <= 0) { spentTime = 1; }
 
-    var steps = args.DATAS.length * n;
-    var scale = NN.NetworkStat.getNetWeightsCount(NET) * args.DATAS.length * n;
+    var steps = samplesDone;
+    var scale = NN.NetworkStat.getNetWeightsCount(NET) * steps;
     var speed = Math.round((1.0 * scale / spentTime));
 
     var stepTime = Math.round(((1.0 * spentTime) / steps) * 1000.0);
 
     if (isOk)
     {
-      console.log("TRAINING OK", "iterations:" + STR(n), "time:" + STR(spentTime) + " ms", "speed:" + STR(speed) + "K w*s/s", "step:" + STR(stepTime) + " us", NET);
+      console.log("TRAINING OK", "iterations:" + STR(n), "time:" + STR(spentTime) + " ms", "speed:" + STR(speed) + "K w*s/s", "step:" + STR(stepTime) + " us", NET.layers);
     }
     else
     {
-      console.log("TRAINING FAILED", "timeout:"+STR(n), NET);
+      console.log("TRAINING FAILED", "timeout:" + STR(n), NET.layers);
     }
-  };
+  }
 
   return that;
 }
-TrainingProgressReporterConsole.DEFAULT_REPORT_INTERVAL = DEFAULT_REPORT_INTERVAL; // export
+// static items
+(function ()
+{
+  var self = TrainingProgressReporterConsole;
+  self.DEFAULT_REPORT_INTERVAL = DEFAULT_REPORT_INTERVAL; // export
+})();
 
 if (NN != null) {
 NN.TrainingProgressReporterConsole = TrainingProgressReporterConsole;

@@ -181,8 +181,8 @@ function  getDefActFuncTrainee() { return ActFuncSigmoidTrainee.getInstance(); }
 // .addDeltaOutputSum(ddos)      - increments dos for neuron      [N/A]             .dos+ddos            [N/A]
 // .getDeltaOutputSum()          - return dos for neuron          [N/A]             return .dos          [N/A]
 
-// BaseNeuron (abstract)
-
+// Base neuron
+// Base class for all neurons
 function BaseNeuron()
 {
   var that = this || {};
@@ -193,7 +193,6 @@ function BaseNeuron()
 
 // InputNeuron
 // Always return set value as its output
-
 function InputNeuron()
 {
   var that = new BaseNeuron();
@@ -219,7 +218,6 @@ function dynamicCastInputNeuron(n) { if (n.set != null) { return n; } return nul
 
 // Proc Neuron
 // Neuron that proccess its input inside proc method
-
 function ProcNeuron(func)
 {
   if (func == null) { func = getDefActFunc(); }
@@ -253,7 +251,7 @@ function ProcNeuron(func)
 
   that.out = 0.0;
 
-  that.sum = 0.0; // Used for for training, but kept here to simplify training implemenation
+  that.sum = 0.0; // Used for for training, but kept here to simplify training implementation
 
   function calcOutputSum(ins)
   {
@@ -297,7 +295,7 @@ function ProcNeuron(func)
     }
   }
 
-  // Core proccsing
+  // Core proccesing
   // Computes output based on input
 
   that.S = function (x) { assert(func != null); assert(func.S != null); return func.S(x); }
@@ -328,6 +326,8 @@ function ProcNeuron(func)
 
 function dynamicCastProcNeuron(n) { if (n.S != null) { return n; } return null; }
 
+// Proc neuron "trainee"
+// Regular proc neuron that extended with training data and functions
 function ProcNeuronTrainee(func)
 {
   // ProcNeurons extension used for training
@@ -622,13 +622,13 @@ function doProc(NET, inputs)
 // -----------------------------------------------
 // Mostly used for train
 
-var DEFAULT_EPS = 0.1;
-
 var NetworkStat = new function () // static class
 {
   var self = this;
 
   // MatchEps
+
+  var DEFAULT_EPS = 0.1;
 
   self.DEFAULT_EPS = DEFAULT_EPS;
 
@@ -822,23 +822,6 @@ var NetworkStat = new function () // static class
   }
   self.getResultSampleAggErrorSum = getResultSampleAggErrorSum;
 
-  function getResultSetAggErrorSum(TARGS, CALCS)
-  {
-    var count = TARGS.length;
-
-    assert(count == CALCS.length);
-
-    var result = 0;
-
-    for (var s = 0; s < count; s++)
-    {
-      result += getResultSampleAggErrorSum(TARGS[s], CALCS[s]);
-    }
-
-    return(result);
-  }
-  self.getResultSetAggErrorSum = getResultSetAggErrorSum;
-
   // AggSum to SimpleLoss mutiplier: to be used as loss function (error function), should be mutiplied by 1/2 so derivative will not have 2x in front
 
   var AGG_ERROR_SUM_TO_SIMPLE_LOSS_MULTIPLY_BY = 0.5;
@@ -862,17 +845,7 @@ var NetworkStat = new function () // static class
   }
   self.getResultSampleMSE = getResultSampleMSE;
 
-  function getResultSetMSE(TARGS, CALCS)
-  {
-    var result = getResultSetAggErrorSum(TARGS, CALCS);
-    var count = TARGS.length;
-    if (count > 0) { count *= TARGS[0].length; }
-    if (count <= 0) { return NaN; }
-    return(result / count);
-  }
-  self.getResultSetMSE = getResultSetMSE;
-
-  function getResultSetMSEByAggErrorSum(sum, sampleSize, samplesCount)
+  function getResultMSEByAggErrorSum(sum, sampleSize, samplesCount)
   {
     if (sampleSize == null) { return NaN; }
     if (samplesCount == null) { samplesCount = 1; }
@@ -881,28 +854,22 @@ var NetworkStat = new function () // static class
     if (count <= 0) { return NaN; }
     return(sum / count);
   }
-  self.getResultSetMSEByAggErrorSum = getResultSetMSEByAggErrorSum;
+  self.getResultMSEByAggErrorSum = getResultMSEByAggErrorSum;
 
   // Aggregated error (AKA MSE rooted)
 
-  function getResultSetAggError(TARGS, CALCS)
+  function getResultAggErrorByAggErrorSum(sum, sampleSize, samplesCount)
   {
-    return Math.sqrt(getResultSetMSE(TARGS, CALCS));
+    return Math.sqrt(getResultMSEByAggErrorSum(sum, sampleSize, samplesCount));
   }
-  self.getResultSetAggError = getResultSetAggError;
-
-  function getResultSetAggErrorByAggErrorSum(sum, sampleSize, samplesCount)
-  {
-    return Math.sqrt(getResultSetMSEByAggErrorSum(sum, sampleSize, samplesCount));
-  }
-  self.getResultSetAggErrorByAggErrorSum = getResultSetAggErrorByAggErrorSum;
+  self.getResultAggErrorByAggErrorSum = getResultAggErrorByAggErrorSum;
 
   // Misc
 
+  /// Retuns array with only one index of total item set to SET(=1) and all other as NOTSET(=0):
+  /// Example: 0=[1, 0, 0 ...], 1=[0, 1, 0, ...], 2=[0, 0, 1, ...]
   function getR1Array(index, total, SET, NOTSET)
   {
-    // Retuns array with only one index of total item set to SET(=1) and all other as NOTSET(=0): 0=[1, 0, 0 ...], 1=[0, 1, 0, ...], 2=[0, 0, 1, ...]
-
     if (SET    == null) { SET    = 1; }
     if (NOTSET == null) { NOTSET = 0; }
 
@@ -956,22 +923,124 @@ var NetworkStat = new function () // static class
 // -----------------------------------------------
 // Do network train
 
-// Base class for training alogorith implemenation
+var DEFAULT_MAX_EPOCH_COUNT = 50000;
+var DEFAULT_TRAINING_SPEED  = 0.125;
 
-function NetworkTrainer()
+/// Training parameters
+function TrainingParams(speed, maxEpochCount, fastVerify)
 {
-  var that = this || { };
-  that.trainInit = function trainInit(NET) { };
-  that.trainStep = function trainStep(NET, DATA, TARG, speed) { throw new Error("trainStep not implemented"); };
-  that.trainDone = function trainDone(NET) { };
+  var that = this || {};
+
+  that.speed = DEFAULT_TRAINING_SPEED;
+  that.maxEpochCount = DEFAULT_MAX_EPOCH_COUNT;
+  that.fastVerify = false;
+
+  // ctor
+
+  if ((speed == null) || (speed <= 0)) { speed = DEFAULT_TRAINING_SPEED; }
+  if ((maxEpochCount == null) || (maxEpochCount <= 0)) { maxEpochCount = DEFAULT_MAX_EPOCH_COUNT; }
+  if (fastVerify == null) { fastVerify = false; }
+
+  that.speed = speed;
+  that.maxEpochCount = maxEpochCount;
+  that.fastVerify = fastVerify;
+
   return that;
 }
 
-// Back propagation training alogorithm implemenation
+/// Data information
+function TrainingDatasetInfo()
+{
+  var that = this || {};
+
+  that.trainDatasetSize = 0;
+
+  return that;
+}
+
+/// Generic class for training lifecycle
+function TrainingProccessor()
+{
+  var that = this || {};
+
+  /// <summary> Start the whole training session </summary>
+  that.trainStart = function(NET, trainingParams, datasetInfo) { }
+
+  /// <summary> Start training eposh (each pass over the whole dataset) </summary>
+  that.trainEposhStart = function(NET, eposhIndex) { }
+
+  /// <summary> End training eposh (each pass over the whole dataset) </summary>
+  that.trainEposhEnd = function(NET, eposhIndex) { }
+
+  /// <summary> End the whole training session </summary>
+  that.trainEnd = function(NET, isDone) { }
+
+  return that;
+};
+
+/// Base class for training alogorith implementation
+function NetworkTrainer()
+{
+  var that = this || {};
+  var base = TrainingProccessor; base.call(that);
+
+  /// <summary> Do single training step. Returs result of pre-training run with DATA </summary>
+  that.trainBySample = function (NET, DATA, TARG, speed) { throw new Error("trainBySample not implemented"); }
+
+  return that;
+};
+
+/// Class checker for training is done
+function TrainingDoneChecker()
+{
+  var that = this || {};
+  var base = TrainingProccessor; base.call(that);
+
+  /// <summary> Check is sample is valid. If all samples are valid, assumed that training is complete </summary>
+  that.trainSampleIsValid = function(NET, TARG, CALC) { return false; }
+
+  /// <summary> Check that eposh result is valid. If this function returns true, training assumed complete </summary>
+  that.trainEpochIsValid = function(NET, epochIndex) { return false; }
+
+  return that;
+};
+
+/// Training progress reporter
+/// Will be called during traing to report progress
+/// May rise traing abort event
+
+function TrainingProgressReporter()
+{
+  var that = this || {};
+  var base = TrainingProccessor; base.call(that);
+
+  /// Reports or updates stats by sample. if returns false, training will be aborted
+  that.trainSampleReportAndCheckContinue = function(NET, DATA, TARG, CALC, epochIndex, sampleIndex)
+  {
+    return true;
+  }
+
+  return that;
+};
+
+// Training progress void (does nothing) implementation
+
+function TrainingProgressReporterVoid()
+{
+  var that = this || {};
+  var base = TrainingProgressReporter; base.call(that);
+
+  // Does nothing
+
+  return that;
+};
+
+// Back propagation training alogorithm implementation
 
 function NetworkTrainerBackProp()
 {
-  var that = new NetworkTrainer();
+  var that = this || {};
+  var base = NetworkTrainer; base.call(that);
 
   // Use "/" instead of * during train. Used in unit tests only, should be false on production
   that.DIV_IN_TRAIN = false;
@@ -1065,7 +1134,7 @@ function NetworkTrainerBackProp()
     }
   }
 
-  function doTrainStep(NET, DATA, TARG, speed)
+  function trainBySample(NET, DATA, TARG, speed)
   {
     // NET=network, DATA=input, TARG=expeted
     // CALC=calculated output (will be calculated)
@@ -1128,11 +1197,13 @@ function NetworkTrainerBackProp()
         }
       }
     }
+
+    return CALC;
   }
 
   // Export
 
-  that.trainStep = doTrainStep;
+  that.trainBySample = trainBySample;
 
   // Extra export (for unit tests)
 
@@ -1143,11 +1214,12 @@ function NetworkTrainerBackProp()
   return that;
 }
 
-// Back propagation training alogorithm implemenation (Fast)
+// Back propagation training fast alogorithm implemenation
 
 function NetworkTrainerBackPropFast()
 {
-  var that = new NetworkTrainer();
+  var that = this || {};
+  var base = NetworkTrainer; base.call(that);
 
   // Use "/" instead of * during train. Used in unit tests only, should be false on production
   that.DIV_IN_TRAIN = false;
@@ -1195,7 +1267,7 @@ function NetworkTrainerBackPropFast()
     }
   }
 
-  function doTrainStepFast(NET, DATA, TARG, speed)
+  function trainBySample(NET, DATA, TARG, speed)
   {
     // NET=network, DATA=input, TARG=expeted
     // CALC=calculated output (will be calculated)
@@ -1268,7 +1340,7 @@ function NetworkTrainerBackPropFast()
 
   // Export
 
-  that.trainStep = doTrainStepFast;
+  that.trainBySample = trainBySample;
 
   return that;
 }
@@ -1276,173 +1348,125 @@ function NetworkTrainerBackPropFast()
 var defTrainer_ = new NetworkTrainerBackPropFast();
 function getDefTrainer() { return defTrainer_; }
 
-/// Class checker for training is done
-
-function TrainingDoneChecker()
-{
-  var that = this || {};
-
-  /// Function checks if training is done
-  /// DATAS is a list of source data sets
-  /// TARGS is a list of target data sets
-  /// CALCS is a list of result data sets
-  function isTrainingDone(DATAS, TARGS, CALCS)
-  {
-    throw 'TrainingDoneChecker::isTrainingDone is abstract';
-  }
-  that.isTrainingDone = isTrainingDone;
-
-  return that;
-}
-
-// Training done checker by eps
+// Class checker for training is done (by results differ from groud truth no more than eps) implemenation
 
 function TrainingDoneCheckerEps(eps)
 {
   var that = this || {};
-  var base = TrainingDoneChecker;
+  var base = TrainingDoneChecker; base.call(that);
+
+  var DEFAULT_EPS = NetworkStat.DEFAULT_EPS;
 
   // Constructor
 
-  base.call(this);
-
   if ((eps == null) || isNaN(eps) || (eps <= 0.0)) { eps = DEFAULT_EPS; } // > 0.0 and < 0.5
 
-  // simple single vectors match
-
-  function isTrainingDoneSimple(TARGS, CALCS, eps)
+  that.trainSampleIsValid = function(NET, TARG, CALC)
+  //override
   {
-    assert(TARGS.length == CALCS.length);
-
-    for (var s = 0; s < TARGS.length; s++)
-    {
-      if (!NetworkStat.isResultSampleMatchEps(TARGS[s], CALCS[s], eps))
-      {
-        return(false);
-      }
-    }
-
-    return(true);
+    return NetworkStat.isResultSampleMatchEps(TARG, CALC, eps);
   }
-
-  function isTrainingDone(DATAS, TARGS, CALCS)
-  {
-    assert(DATAS.length == TARGS.length);
-    assert(TARGS.length == CALCS.length);
-    return(isTrainingDoneSimple(TARGS, CALCS, eps));
-  }
-  that.isTrainingDone = isTrainingDone;
   
   return that;
 }
 
-/// Training progress reporter
-/// Will be called during traing to report progress
-/// May rise traing abort event
-
-function TrainingProgressReporter()
-{
-  var that = this || {};
-  
-  // Report methods
-
-  that.onTrainingBegin = function(args) { };
-  that.onTrainingStep  = function(args, i, maxCount) { return true; }; // return false to abort training
-  that.onTrainingEnd   = function(args, isOk) { };
-  
-  return that;
-};
-// static init
-(function()
-{
-  var self = TrainingProgressReporter;
-
-  // TrainingArgs parameter
-
-  function TrainingArgs(NET, DATAS, TARGS, SPEED, maxStepsCount) // args param to events
-  {
-    this.NET = NET;
-    this.DATAS = DATAS;
-    this.TARGS = TARGS;
-    this.SPEED = SPEED;
-
-    this.maxStepsCount = maxStepsCount;
-  }
-  self.TrainingArgs = TrainingArgs;
-
-  // TrainingStep parameter
-  // for onTrainingStep
-
-  function TrainingStep(CALCS, stepIndex) // args param to step
-  {
-    this.CALCS = CALCS;
-    this.stepIndex = stepIndex;
-  }
-  self.TrainingStep = TrainingStep;
-
-})();
-
 // Main training function
 
-var DEFAULT_TRAIN_COUNT    = 50000;
-var DEFAULT_TRAINING_SPEED = 0.125;
-
 /// Train the neural network
-function doTrain(NET, DATAS, TARGS, speed, MaxN, progressReporter, isTrainingDoneChecker, trainer)
+function doTrain(NET, DATAS, TARGS, trainingParams, trainingProgressReporter, trainingDoneChecker, trainer)
 {
-  if ((MaxN == null) || (MaxN < 0))   { MaxN = DEFAULT_TRAIN_COUNT; }
-  if ((speed == null) || (speed < 0)) { speed = DEFAULT_TRAINING_SPEED; }
+  if (trainingParams == null) { trainingParams = new TrainingParams; }
 
-  if (isTrainingDoneChecker == null) { isTrainingDoneChecker = new TrainingDoneCheckerEps(); }
+  if (trainingProgressReporter == null) { trainingProgressReporter = new TrainingProgressReporterVoid(); }
+
+  if (trainingDoneChecker == null) { trainingDoneChecker = new TrainingDoneCheckerEps(); }
 
   if (trainer == null) { trainer = getDefTrainer(); }
 
-  var trainArgs = new TrainingProgressReporter.TrainingArgs(NET, DATAS, TARGS, speed, MaxN);
+  var trainingDatasetInfo = new TrainingDatasetInfo();
+  trainingDatasetInfo.trainDatasetSize = DATAS.length;
 
-  if (progressReporter != null) { progressReporter.onTrainingBegin(trainArgs); }
+  trainer.trainStart(NET, trainingParams, trainingDatasetInfo);
+  trainingDoneChecker.trainStart(NET, trainingParams, trainingDatasetInfo);
+  trainingProgressReporter.trainStart(NET, trainingParams, trainingDatasetInfo);
 
-  trainer.trainInit(NET);
+  var MaxN = trainingParams.maxEpochCount;
+  var speed = trainingParams.speed;
 
   // steps
   var isDone = false;
-  for (var n = 0; (n < MaxN) && (!isDone); n++)
+  var isAbort = false;
+  for (var n = 0; (n < MaxN) && (!isDone) && (!isAbort); n++)
   {
-    var CALCS = [];
-    for (var s = 0; s < DATAS.length; s++)
-    {
-      CALCS.push(doProc(NET, DATAS[s])); // Fill output
-    }
+    trainer.trainEposhStart(NET, n);
+    trainingDoneChecker.trainEposhStart(NET, n);
+    trainingProgressReporter.trainEposhStart(NET, n);
 
-    if (progressReporter != null)
-    { 
-      var trainStep = new TrainingProgressReporter.TrainingStep(CALCS, n);
-      if (progressReporter.onTrainingStep(trainArgs, trainStep) === false)
+    if (!trainingParams.fastVerify)
+    {
+      // strict verify
+      isDone = true;
+      for (var s = 0; (s < DATAS.length) && (!isAbort); s++)
       {
-        // Abort training
-        progressReporter.onTrainingEnd(trainArgs, false);
-        return(false); 
+        var CALC = doProc(NET, DATAS[s]);
+
+        if (!trainingDoneChecker.trainSampleIsValid(NET, TARGS[s], CALC))
+        {
+          isDone = false;
+        }
+
+        if (!trainingProgressReporter.trainSampleReportAndCheckContinue(NET, DATAS[s], TARGS[s], CALC, n, s))
+        {
+          isDone = false;
+          isAbort = true;
+        }
+      }
+
+      if ((!isDone) && (!isAbort))
+      {
+        for (var s = 0; s < DATAS.length; s++)
+        {
+          trainer.trainBySample(NET, DATAS[s], TARGS[s], speed);
+        }
+      }
+    }
+    else
+    {
+      // fast verify
+      isDone = true;
+      for (var s = 0; (s < DATAS.length) && (!isAbort); s++)
+      {
+        var CALC_BEFORE_TRAIN = trainer.trainBySample(NET, DATAS[s], TARGS[s], speed);
+
+        // we use calc before train as input
+        // strictly speaking this is incorrect, 
+        // but we assume that single training step will not affect stats very much and will only improve results
+
+        var CALC = CALC_BEFORE_TRAIN;
+
+        if (!trainingDoneChecker.trainSampleIsValid(NET, TARGS[s], CALC))
+        {
+          isDone = false;
+        }
+
+        if (!trainingProgressReporter.trainSampleReportAndCheckContinue(NET, DATAS[s], TARGS[s], CALC, n, s))
+        {
+          isDone = false;
+          isAbort = true;
+        }
       }
     }
 
-    isDone = isTrainingDoneChecker.isTrainingDone(DATAS, TARGS, CALCS);
-
-    if (!isDone)
-    {
-      for (var s = 0; s < DATAS.length; s++)
-      {
-        trainer.trainStep(NET, DATAS[s], TARGS[s], speed);
-      }
-    }
+    trainer.trainEposhEnd(NET, n);
+    trainingDoneChecker.trainEposhEnd(NET, n);
+    trainingProgressReporter.trainEposhEnd(NET, n);
   }
 
-  trainer.trainDone(NET);
+  trainer.trainEnd(NET, isDone);
+  trainingDoneChecker.trainEnd(NET, isDone);
+  trainingProgressReporter.trainEnd(NET, isDone);
 
-  if (progressReporter != null)
-  { 
-    progressReporter.onTrainingEnd(trainArgs, isDone);
-  }
-
-  return(isDone);
+  return (isDone);
 }
 
 // Exports
@@ -1485,11 +1509,16 @@ NN.ExtNeuronFactory = ExtNeuronFactory;
 NN.NetworkStat = NetworkStat;
 
 // Training
+NN.TrainingParams = TrainingParams;
+NN.TrainingDatasetInfo = TrainingDatasetInfo;
+NN.TrainingProccessor = TrainingProccessor;
+NN.TrainingDoneChecker = TrainingDoneChecker;
+NN.TrainingProgressReporter = TrainingProgressReporter;
+NN.TrainingProgressReporterVoid = TrainingProgressReporterVoid;
 NN.NetworkTrainer = NetworkTrainer;
 NN.NetworkTrainerBackProp = NetworkTrainerBackProp;
 NN.NetworkTrainerBackPropFast = NetworkTrainerBackPropFast;
 NN.getDefTrainer = getDefTrainer;
-NN.TrainingDoneChecker = TrainingDoneChecker;
 NN.TrainingDoneCheckerEps = TrainingDoneCheckerEps;
 NN.TrainingProgressReporter = TrainingProgressReporter;
 NN.doTrain = doTrain;

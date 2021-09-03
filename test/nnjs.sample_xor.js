@@ -24,7 +24,7 @@ function sampleXorNetwork()
   var DATAS = [ [1, 1], [1, 0], [0, 1], [0, 0]];
   var TARGS = [    [0],    [1],    [1],    [0]];
 
-  return NN.doTrain(NET, DATAS, TARGS, -1, -1, new NN.TrainingProgressReporterConsole(1000));
+  return NN.doTrain(NET, DATAS, TARGS, new NN.TrainingParams(-1, -1), new NN.TrainingProgressReporterConsole(1000));
 }
 
 function sampleXorNetwork2()
@@ -48,5 +48,5 @@ function sampleXorNetwork2()
   var DATAS = [ [1, 1], [1, 0], [0, 1], [0, 0]];
   var TARGS = [    [0],    [1],    [1],    [0]];
 
-  return NN.doTrain(NET, DATAS, TARGS, -1, -1, new NN.TrainingProgressReporterConsole(1000));
+  return NN.doTrain(NET, DATAS, TARGS, new NN.TrainingParams(-1, -1), new NN.TrainingProgressReporterConsole(1000));
 }

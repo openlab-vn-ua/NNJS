@@ -38,7 +38,7 @@ var CALC = NN.doProc(NET, DATA);
 ```
 
 ## Cousin C++ project: NNCPP
-There is a NN engine implemenation on c++ with (almost) the same API:
+There is a NN engine implementation on c++ with (almost) the same API:
 https://github.com/openlab-vn-ua/NNCPP
 
 ## Useful links (and thanks to!)

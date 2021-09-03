@@ -295,7 +295,7 @@ function doUnitTest2WithTrainer(trainer)
 
   // Do train step
 
-  NN.doTrain(NET, [DATA], [TARG], 0.5, 1, null, null, trainer);
+  NN.doTrain(NET, [DATA], [TARG], new NN.TrainingParams(0.5, 1), null, null, trainer);
 
   if (!isFloatAlmostEqual(PNT(L1.neurons[0]).w[0], 0.149780716))
   {

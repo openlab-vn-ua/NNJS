@@ -438,7 +438,7 @@ function sampleOcrNetwork()
   // Training
 
   console.log("Training, please wait ...");
-  if (!NN.doTrain(NET, DATAS, TARGS, 0.125, 500, new NN.TrainingProgressReporterConsole(10), new NN.TrainingDoneCheckerEps()))
+  if (!NN.doTrain(NET, DATAS, TARGS, new NN.TrainingParams(0.125, 500), new NN.TrainingProgressReporterConsole(10), new NN.TrainingDoneCheckerEps()))
   {
     console.log("Training failed (does not to achieve loss error margin?)", NET);
     testResult = false;
