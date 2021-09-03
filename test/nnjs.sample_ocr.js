@@ -316,7 +316,7 @@ function sampleOcrNetwork()
 
   if (true)
   {
-    var seed = new Date().getTime() % 0x7FFF0000 + 1;
+    var seed = Random.getRandomSeed(new Date().getTime());
     NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleOcrNetwork", "(samples)", "seed=", seed);
   }
@@ -337,7 +337,7 @@ function sampleOcrNetwork()
 
   if (true)
   {
-    var seed = new Date().getTime() % 0x7FFF0000 + 1;
+    var seed = Random.getRandomSeed(new Date().getTime());
     NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleOcrNetwork", "(net)", "seed=", seed, "layers=", LAYERS);
   }

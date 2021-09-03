@@ -97,6 +97,6 @@ function Random(seed)
   {
     return timeVal % 0x7FFF0000 + 1;
   }
-});
+})();
 
 
