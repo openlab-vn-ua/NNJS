@@ -345,16 +345,15 @@ function ProcNeuron(func)
   {
     assert(that.inputs.length == that.w.length);
 
-    var ins = [];
-
+    var sum = 0;
     var count = that.inputs.length;
     for (var i = 0; i < count; i++)
     {
-      ins.push(that.inputs[i].get());
+      sum += that.inputs[i].get() * that.w[i];
     }
 
-    that.sum = calcOutputSum(ins);
-    that.out = that.S(that.sum);
+    that.sum = sum;
+    that.out = that.S(sum);
   }
 
   that.get = function()
