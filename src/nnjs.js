@@ -236,7 +236,8 @@ function BaseNeuron()
 // Always return set value as its output
 function InputNeuron()
 {
-  var that = new BaseNeuron();
+  var that = this || {};
+  var base = BaseNeuron; base.call(that);
 
   that.out = 0.0;
 
@@ -261,9 +262,10 @@ function dynamicCastInputNeuron(n) { if (n.set != null) { return n; } return nul
 // Neuron that proccess its input inside proc method
 function ProcNeuron(func)
 {
-  if (func == null) { func = getDefActFunc(); }
+  var that = this || {};
+  var base = BaseNeuron; base.call(that);
 
-  var that = new BaseNeuron();
+  if (func == null) { func = getDefActFunc(); }
 
   function getRandomInitWeight()
   {
@@ -371,14 +373,24 @@ function dynamicCastProcNeuron(n) { if (n.S != null) { return n; } return null; 
 function ProcNeuronTrainee(func)
 {
   // ProcNeurons extension used for training
-
+  var that = this || {};
   if (func == null) { func = getDefActFuncTrainee(); }
+  var base = ProcNeuron; base.call(that, func);
 
-  var that = new ProcNeuron(func);
+  assert(func != null);
+  assert(func.SD != null);
+  var train = func;
+
+  that.inputGetTrainee = function (i)
+  {
+    assert(i >= 0);
+    assert(i < that.inputs.length);
+    return dynamicCastProcNeuronTrainee(that.inputs[i]); // slow
+  }
 
   // Main training
 
-  that.SD = function (x) { assert(func != null); assert(func.SD != null); return func.SD(x); }
+  that.SD = function (x) { return train.SD(x); }
 
   that.nw = []; // new weights for training
 
@@ -442,7 +454,8 @@ function dynamicCastProcNeuronTrainee(n) { if (n.SD != null) { return n; } retur
 
 function BiasNeuron()
 {
-  var that = new BaseNeuron();
+  var that = this || {};
+  var base = BaseNeuron; base.call(that);
 
   var BIAS = 1.0;
 
@@ -1287,14 +1300,14 @@ function NetworkTrainerBackPropFast()
 
   function addDeltaHiddenSums(theNeuron, dos) // FAST
   {
-    if ((theNeuron == null) || (theNeuron.inputs == null)) { return; } // Empty
+    if ((theNeuron == null) || (theNeuron.inputs == null) || (theNeuron.SD == null)) { return; } // Empty
 
     var count = theNeuron.inputs.length;
 
     var ds;
     for (var i = 0; i < count; i++)
     {
-      var input = dynamicCastProcNeuronTrainee(theNeuron.inputs[i]);
+      var input = theNeuron.inputGetTrainee(i); // dynamicCastProcNeuronTrainee(theNeuron.inputs[i]);
       if (input == null)
       {
         // This neuron input is non-trainee neuron, ds is N/A since we do not know its getSum()
