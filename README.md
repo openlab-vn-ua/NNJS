@@ -31,7 +31,7 @@ console.log("Training complete", NET);
 
 ### Run inference
 ```
-// NN.doProc(Net,DATA) // run single infrence calculation
+// NN.doProc(Net,DATA) // run single inference calculation
 // Input DATA (must have same count as number of inputs)
 // Returns result vector (will have same count as number of outputs)
 var CALC = NN.doProc(NET, DATA);
