@@ -8,14 +8,16 @@
 // Ocr sample
 // ----------------------------------------------------
 
+var FIXED_SEED = 1; // 0=use random seed
+
 var SAMPLE_OCR_SX = 9;
 var SAMPLE_OCR_SY = 8;
+
 var SAMPLE_OCR_INP_VOID  = 0.0;
 var SAMPLE_OCR_INP_FILL  = 1.0;
 
 var SAMPLE_OCR_OUT_NONE  = 0.0;
 var SAMPLE_OCR_OUT_FOUND = 1.0;
-
 
 function emptyStr() { return ""; }
 
@@ -316,7 +318,7 @@ function sampleOcrNetwork()
 
   if (true)
   {
-    var seed = Random.getRandomSeed(new Date().getTime());
+    var seed = FIXED_SEED > 0 ? FIXED_SEED : Random.getRandomSeed(new Date().getTime());
     NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleOcrNetwork", "(samples)", "seed=", seed);
   }
@@ -337,13 +339,33 @@ function sampleOcrNetwork()
 
   if (true)
   {
-    var seed = Random.getRandomSeed(new Date().getTime());
+    var seed = FIXED_SEED > 0 ? FIXED_SEED : Random.getRandomSeed(new Date().getTime());
     NN.Internal.getPRNG().setSeed(seed);
     console.log("sampleOcrNetwork", "(net)", "seed=", seed, "layers=", LAYERS);
   }
 
-  var actFunc = NN.ActFuncSigmoidTrainee.getInstance();
-  var outFunc = NN.ActFuncSigmoidTrainee.getInstance();
+  //Not working     : seed=1 no train // TODO: Check why RELU does not work here (error is 0.5 all they way during training)
+  //var actFunc = NN.ActFuncRELUTrainee.getInstance();
+  //var outFunc = NN.ActFuncRELUTrainee.getInstance();
+
+  //Works very good : seed=1 train in  41 iterations // Stat: 100.0%/100.0%/100.0%/ 97.1% // InfTime:71us(65us?) // INP/OUT 0.0..1.0 // Leak:0.1
+  //Works good      : seed=1 train in  84 iterations // Stat: 100.0%/100.0%/100.0%/ 95.7% // InfTime:71us(65us?) // INP/OUT 0.0..1.0 // Leak:0.01
+  //Works EXCELLENT : seed=1 train in  85 iterations // Stat: 100.0%/100.0%/100.0%/100.0% // InfTime:71us(65us?) // INP/OUT 0.0..1.0 // Leak:0.001 * [def]
+  //Works good      : seed=1 train in 356 iterations // Stat: 100.0%/100.0%/100.0%/ 98.6% // InfTime:71us(65us?) // INP/OUT 0.0..1.0 // Leak:0.0001
+  var actFunc = NN.ActFuncLRELUTrainee.newInstance(0.001);
+  var outFunc = NN.ActFuncLRELUTrainee.newInstance(0.001);
+
+  //Works good      : seed=1 train in  71 iterations // Stat: 100.0%/100.0%/100.0%/ 94.4% // InfTime:71us(65us?) // INP/OUT 0.0..1.0 // Leak:0.001 * [def]
+  //var actFunc = NN.ActFuncLLRELUTrainee.newInstance(0.001);
+  //var outFunc = NN.ActFuncLLRELUTrainee.newInstance(0.001);
+
+  //Works good      : seed=1 train in 255 iterations // Stat: 100.0%/ 98.6%/100.0%/ 88.6% // InfTime:71us
+  //var actFunc = NN.ActFuncSigmoidTrainee.getInstance();
+  //var outFunc = NN.ActFuncSigmoidTrainee.getInstance();
+
+  //Works norm      : seed=1 train in 442 iterations // Stat: 100.0%/ 98.6%/ 92.9%/ 84.3% // InfTime:71us
+  //var actFunc = NN.ActFuncTanhTrainee.getInstance();
+  //var outFunc = NN.ActFuncTanhTrainee.getInstance();
 
   if (LAYERS == 3)
   {
@@ -438,7 +460,7 @@ function sampleOcrNetwork()
   // Training
 
   console.log("Training, please wait ...");
-  if (!NN.doTrain(NET, DATAS, TARGS, new NN.TrainingParams(0.125, 500), new NN.TrainingProgressReporterConsole(10), new NN.TrainingDoneCheckerEps()))
+  if (!NN.doTrain(NET, DATAS, TARGS, new NN.TrainingParams(0.125, 1000), new NN.TrainingProgressReporterConsole(10), new NN.TrainingDoneCheckerEps()))
   {
     console.log("Training failed (does not to achieve loss error margin?)", NET);
     testResult = false;
@@ -529,23 +551,49 @@ function sampleOcrNetwork()
       }
     }
 
+    function showPerc(val) { return STR("") + STR(Math.round(val * 1000.0) / 10.0) + "%"; }
+
+    var statFull = statGood + statFail + statWarn;
+    var rateNorm = statFull > 0 ? (1.0 * statGood + statWarn) / statFull : 0.0;
+
+    var statText = "";
+
     if (isOK)
     {
-      console.log("Verification step " + STR(stepName) + ":OK [100%]" + (" InferenceTime:" + STR(stepTime) + "us"));
+      statText = "Good";
     }
     else
     {
-      var statFull = 0.0 + statGood + statFail + statWarn;
-      function showPerc(val) { return STR("") + STR(Math.round(val * 1000.0) / 10.0); }
-      console.log("Verification step " + STR(stepName) + ":Done:" + (" InferenceTime:" + STR(stepTime) + "us") + (" GOOD=" + showPerc(statGood / statFull)) + (" WARN=" + showPerc(statWarn / statFull)) + (" FAIL=" + showPerc(statFail / statFull)));
+      statText = "Fail";
       if (maxFailRate > 0)
       {
-        if ((statFail/ statFull) <= maxFailRate)
+        if ((1.0 * statFail / statFull) <= maxFailRate)
         {
           isOK = true; // failed, but withing the allowed range - assume ok
+          statText = "Warn";
         }
       }
     }
+
+    var msg;
+
+    msg  = "";
+    msg += "Verification step " + STR(stepName) + STR(" ");
+    msg += "Status:" + STR(statText) + STR(" ");
+    msg += "Rate:" + showPerc(rateNorm) + STR(" ");
+    msg += "InfTime:" + STR(stepTime) + "us" + " ";
+
+    if (statWarn > 0)
+    {
+      msg += "Warn:" + showPerc(1.0 * statWarn / statFull) + STR(" ");
+    }
+
+    if (statFail > 0)
+    {
+      msg += "Fail:" + showPerc(1.0 * statFail / statFull) + STR(" ");
+    }
+
+    console.log(msg);
 
     return(isOK);
   }

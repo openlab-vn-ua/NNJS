@@ -59,8 +59,8 @@ function ActFuncSigmoid()
   var that = this || {};
   that.S = CalcMathSigmoid.S;
   return that;
-};
-(function () { var self = ActFuncSigmoid; var s = new self(); self.getInstance = function () { return s; } })()
+}
+(function () { var self = ActFuncSigmoid; var s = new self(); self.getInstance = function () { return s; } })();
 
 function ActFuncSigmoidTrainee()
 {
@@ -68,8 +68,8 @@ function ActFuncSigmoidTrainee()
   that.S  = CalcMathSigmoid.S;
   that.SD = CalcMathSigmoid.SD;
   return that;
-};
-(function () { var self = ActFuncSigmoidTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+}
+(function () { var self = ActFuncSigmoidTrainee; var s = new self(); self.getInstance = function () { return s; } })();
 
 // Activation : RELU
 
@@ -85,8 +85,8 @@ function ActFuncRELU()
   var that = this || {};
   that.S = CalcMathRELU.S;
   return that;
-};
-(function () { var self = ActFuncRELU; var s = new self(); self.getInstance = function () { return s; } })()
+}
+(function () { var self = ActFuncRELU; var s = new self(); self.getInstance = function () { return s; } })();
 
 function ActFuncRELUTrainee()
 {
@@ -94,36 +94,77 @@ function ActFuncRELUTrainee()
   that.S  = CalcMathRELU.S;
   that.SD = CalcMathRELU.SD;
   return that;
-};
-(function () { var self = ActFuncRELUTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+}
+(function () { var self = ActFuncRELUTrainee; var s = new self(); self.getInstance = function () { return s; } })();
 
 // Activation : LRELU
 
-var CalcMathLRELULeak = 0.1; // [0.0..1.0)
+var CoreMathLRELULeak = 0.001; // [0.0..1.0)
 
-var CalcMathLRELU = (new function () // static provider
-{
-  var self = this;
-  self.S   = function(x) { return (x < 0) ? x * CalcMathLRELULeak : x; }
-  self.SD  = function(x) { return (x < 0) ? CalcMathLRELULeak : 1.0; }
-}());
-
-function ActFuncLRELU()
+var CoreMathLRELU = function (leak) // core provider
 {
   var that = this || {};
-  that.S = CalcMathLRELU.S;
+  if (leak == null) { leak = CoreMathLRELULeak; }
+  that.S   = function(x) { return (x < 0) ? x * leak : x; }
+  that.SD  = function(x) { return (x < 0) ? leak : 1.0; }
   return that;
 };
-(function () { var self = ActFuncLRELU; var s = new self(); self.getInstance = function () { return s; } })()
 
-function ActFuncLRELUTrainee()
+function ActFuncLRELU(leak)
 {
   var that = this || {};
-  that.S  = CalcMathLRELU.S;
-  that.SD = CalcMathLRELU.SD;
+  core = new CoreMathLRELU(leak);
+  that.S = core.S;
+  return that;
+}
+(function () { var self = ActFuncLRELU; var s = new self(); self.getInstance = function () { return s; } })();
+(function () { var self = ActFuncLRELU; self.newInstance = function (leak) { return new self(leak); }; })();
+
+function ActFuncLRELUTrainee(leak)
+{
+  var that = this || {};
+  core = new CoreMathLRELU(leak);
+  that.S  = core.S;
+  that.SD = core.SD;
+  return that;
+}
+(function () { var self = ActFuncLRELUTrainee; var s = new self(); self.getInstance = function () { return s; } })();
+(function () { var self = ActFuncLRELUTrainee; self.newInstance = function (leak) { return new self(leak); }; })();
+
+// Activation : LLRELU
+
+var CoreMathLLRELULeak = 0.001; // [0.0..1.0)
+
+var CoreMathLLRELU = function (nleak, pleak) // core provider
+{
+  var that = this || {};
+  if (nleak == null) { nleak = CoreMathLLRELULeak; }
+  if (pleak == null) { pleak = nleak; }
+  that.S   = function(x) { return (x < 0) ? x * nleak : (x <= 1.0) ? x : 1.0 + (x-1.0) * pleak; }
+  that.SD  = function(x) { return (x < 0) ? nleak : (x <= 1.0) ? 1.0 : pleak; }
   return that;
 };
-(function () { var self = ActFuncLRELUTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+
+function ActFuncLLRELU(nleak, pleak)
+{
+  var that = this || {};
+  core = new CoreMathLLRELU(nleak, pleak);
+  that.S = core.S;
+  return that;
+}
+(function () { var self = ActFuncLLRELU; var s = new self(); self.getInstance = function () { return s; } })();
+(function () { var self = ActFuncLLRELU; self.newInstance = function (nleak, pleak) { return new self(nleak, pleak); } })();
+
+function ActFuncLLRELUTrainee(nleak, pleak)
+{
+  var that = this || {};
+  core = new CoreMathLLRELU(nleak, pleak);
+  that.S  = core.S;
+  that.SD = core.SD;
+  return that;
+}
+(function () { var self = ActFuncLLRELUTrainee; var s = new self(); self.getInstance = function () { return s; } })();
+(function () { var self = ActFuncLLRELUTrainee; self.newInstance = function (nleak, pleak) { return new self(nleak, pleak); } })();
 
 // Activation : Tanh
 
@@ -139,8 +180,8 @@ function ActFuncTanh()
   var that = this || {};
   that.S = CalcMathTanh.S;
   return that;
-};
-(function () { var self = ActFuncTanh; var s = new self(); self.getInstance = function () { return s; } })()
+}
+(function () { var self = ActFuncTanh; var s = new self(); self.getInstance = function () { return s; } })();
 
 function ActFuncTanhTrainee()
 {
@@ -148,8 +189,8 @@ function ActFuncTanhTrainee()
   that.S  = CalcMathTanh.S;
   that.SD = CalcMathTanh.SD;
   return that;
-};
-(function () { var self = ActFuncTanhTrainee; var s = new self(); self.getInstance = function () { return s; } })()
+}
+(function () { var self = ActFuncTanhTrainee; var s = new self(); self.getInstance = function () { return s; } })();
 
 // Default Activation Functions
 
